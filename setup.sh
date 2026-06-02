@@ -72,7 +72,7 @@ bind_addresses:
   - ""
 rtc:
   port_range_start: 7882
-  port_range_end: 7882
+  port_range_end: 7890
   use_external_ip: true
 keys:
   devkey: "devsecret"
