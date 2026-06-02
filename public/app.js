@@ -295,6 +295,8 @@
     btnGalleryPrev: $('#btn-gallery-prev'),
     btnGalleryNext: $('#btn-gallery-next'),
     galleryPageIndicator: $('#gallery-page-indicator'),
+    dashAvatarToggle: $('#dash-avatar-toggle'),
+    dashProfileDropdown: $('#dash-profile-dropdown'),
 
     // Chat Attachment
     chatFileInput: $('#chat-file-input'),
@@ -668,6 +670,19 @@
   // DASHBOARD
   // ============================================================
   function bindDashboard() {
+    // Toggle dashboard profile dropdown menu
+    if (dom.dashAvatarToggle && dom.dashProfileDropdown) {
+      dom.dashAvatarToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        dom.dashProfileDropdown.classList.toggle('hidden');
+      });
+      document.addEventListener('click', (e) => {
+        if (!dom.dashProfileDropdown.contains(e.target) && !dom.dashAvatarToggle.contains(e.target)) {
+          dom.dashProfileDropdown.classList.add('hidden');
+        }
+      });
+    }
+
     dom.btnNewMeeting.addEventListener('click', startNewMeeting);
 
     dom.btnJoinMeeting.addEventListener('click', () => {
