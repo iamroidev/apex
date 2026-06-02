@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Apex — Unrestricted video conferencing. No time limits, no paywalls.">
+  <title>Apex Classroom</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+
+  <!-- ========== LANDING VIEW ========== -->
+  <div id="view-landing" class="view active">
+    <!-- Animated Cyber-Geometric Background -->
+    <div class="landing-bg-shapes">
+      <div class="shape shape-circle-1"></div>
+      <div class="shape shape-circle-2"></div>
+      <div class="shape shape-line-1"></div>
+      <div class="shape shape-line-2"></div>
+    </div>
+
+    <header class="landing-header">
+      <div class="logo">
+        <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="28" height="28" rx="4" stroke="#00f2fe" stroke-width="1.5" fill="none"/>
+          <line x1="16" y1="6" x2="16" y2="26" stroke="#00f2fe" stroke-width="1" opacity="0.4"/>
+          <line x1="6" y1="16" x2="26" y2="16" stroke="#00f2fe" stroke-width="1" opacity="0.4"/>
+          <circle cx="16" cy="16" r="5" stroke="#00f2fe" stroke-width="1.5" fill="none"/>
+          <circle cx="16" cy="16" r="2" fill="#00f2fe"/>
+        </svg>
+        <span class="logo-text">Apex</span>
+      </div>
+      <button class="theme-toggle-btn" id="theme-toggle-landing" title="Toggle Light/Dark Mode">
+        <svg class="icon-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        <svg class="icon-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </header>
+
+    <main class="landing-main">
+      <div class="landing-hero">
+        <h1 class="landing-title">Unrestricted Video Rooms</h1>
+        <p class="landing-subtitle">Apex is a free, modern classroom and meeting platform. No 40-minute limits, no paywalls. Just connect and collaborate instantly.</p>
+        
+        <!-- Guest Join -->
+        <div class="landing-quick-join">
+          <h4 class="quick-join-title">Quick Join as Guest</h4>
+          <div class="quick-join-inputs">
+            <input type="text" id="landing-join-code" class="input-field" placeholder="Meeting Code" maxlength="12" spellcheck="false" autocomplete="off">
+            <input type="text" id="landing-join-name" class="input-field" placeholder="Your Display Name" maxlength="20" spellcheck="false" autocomplete="off">
+            <button class="btn btn-ghost" id="btn-landing-join">Join Room</button>
+          </div>
+          <div id="landing-join-error" class="auth-error hidden"></div>
+        </div>
+
+        <div class="landing-features">
+          <div class="landing-feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <h3>Unlimited Time</h3>
+              <p>Host lectures, discussions, and labs as long as you need without interruption.</p>
+            </div>
+          </div>
+          <div class="landing-feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 20h9"/>
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <h3>Full Whiteboard</h3>
+              <p>Draw, annotate, and brainstorm in real-time with full-screen collaborative overlays.</p>
+            </div>
+          </div>
+          <div class="landing-feature-card">
+            <div class="feature-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+            </div>
+            <div class="feature-info">
+              <h3>Attendance & Logs</h3>
+              <p>Retrieve detailed attendance session lists and full chat transcripts after every call.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="landing-auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="auth-tab-login">Login</button>
+          <button class="auth-tab" id="auth-tab-signup">Register</button>
+        </div>
+        
+        <!-- Login Form -->
+        <form id="form-login" class="auth-form">
+          <div class="modal-form-group">
+            <label class="modal-label" for="login-username">Username</label>
+            <input type="text" id="login-username" class="input-field" placeholder="Enter username" required autocomplete="username">
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="login-password">Password</label>
+            <input type="password" id="login-password" class="input-field" placeholder="Enter password" required autocomplete="current-password">
+          </div>
+          <div id="login-error" class="auth-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Log In</button>
+        </form>
+
+        <!-- Register Form -->
+        <form id="form-register" class="auth-form hidden">
+          <div class="modal-form-group">
+            <label class="modal-label" for="register-username">Username</label>
+            <input type="text" id="register-username" class="input-field" placeholder="Min 3 characters" minlength="3" required autocomplete="username">
+          </div>
+          <div class="modal-form-group">
+            <label class="modal-label" for="register-password">Password</label>
+            <input type="password" id="register-password" class="input-field" placeholder="Min 6 characters" minlength="6" required autocomplete="new-password">
+          </div>
+          <div id="register-error" class="auth-error hidden"></div>
+          <button type="submit" class="btn btn-primary btn-block">Create Account</button>
+        </form>
+      </div>
+    </main>
+  </div>
+
+  <!-- ========== DASHBOARD VIEW ========== -->
+  <div id="view-dashboard" class="view">
+    <header class="dash-header">
+      <div class="logo">
+        <svg class="logo-icon" width="32" height="32" viewBox="0 0 32 32" fill="none">
+          <rect x="2" y="2" width="28" height="28" rx="4" stroke="#00f2fe" stroke-width="1.5" fill="none"/>
+          <line x1="16" y1="6" x2="16" y2="26" stroke="#00f2fe" stroke-width="1" opacity="0.4"/>
+          <line x1="6" y1="16" x2="26" y2="16" stroke="#00f2fe" stroke-width="1" opacity="0.4"/>
+          <circle cx="16" cy="16" r="5" stroke="#00f2fe" stroke-width="1.5" fill="none"/>
+          <circle cx="16" cy="16" r="2" fill="#00f2fe"/>
+        </svg>
+        <span class="logo-text">Apex</span>
+      </div>
+      <div class="dash-clock" id="dash-clock"></div>
+      <div class="dash-user">
+        <span class="dash-username-display" id="dash-username-display"></span>
+        <button class="theme-toggle-btn" id="theme-toggle-dash" title="Toggle Light/Dark Mode" style="margin-left: var(--sp-2);">
+          <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="btn btn-ghost" id="btn-logout" style="margin-left: var(--sp-3); padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs);">Logout</button>
+      </div>
+    </header>
+
+    <main class="dash-main">
+      <div class="dash-grid">
+        <!-- Action cards -->
+        <button class="action-card" id="btn-new-meeting">
+          <div class="card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="1.5" stroke-linecap="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"/>
+              <polygon points="22,8 22,12 17,10"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+            </svg>
+          </div>
+          <span class="card-label">New Meeting</span>
+          <span class="card-desc">Start an instant session</span>
+        </button>
+
+        <button class="action-card" id="btn-join-meeting">
+          <div class="card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="1.5" stroke-linecap="round">
+              <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/>
+              <polyline points="10 17 15 12 10 7"/>
+              <line x1="15" y1="12" x2="3" y2="12"/>
+            </svg>
+          </div>
+          <span class="card-label">Join</span>
+          <span class="card-desc">Enter a meeting code</span>
+        </button>
+
+        <button class="action-card" id="btn-schedule">
+          <div class="card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#a18cd1" stroke-width="1.5" stroke-linecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+              <circle cx="12" cy="16" r="2" fill="#a18cd1"/>
+            </svg>
+          </div>
+          <span class="card-label">Schedule</span>
+          <span class="card-desc">Plan a future session</span>
+        </button>
+
+        <button class="action-card" id="btn-session-logs">
+          <div class="card-icon">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#05d9e8" stroke-width="1.5" stroke-linecap="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+          </div>
+          <span class="card-label">Session Logs</span>
+          <span class="card-desc">History & attendance</span>
+        </button>
+      </div>
+
+      <!-- Upcoming meetings -->
+      <section class="dash-section">
+        <h2 class="section-heading">Upcoming</h2>
+        <div id="upcoming-list" class="upcoming-list">
+          <p class="empty-state">No scheduled meetings</p>
+        </div>
+      </section>
+
+      <!-- Advantages banner -->
+      <section class="dash-section advantages">
+        <div class="adv-item">
+          <span class="adv-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+          </span> 
+          Unlimited Duration
+        </div>
+        <div class="adv-item">
+          <span class="adv-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+            </svg>
+          </span> 
+          No Downloads
+        </div>
+        <div class="adv-item">
+          <span class="adv-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"/>
+              <circle cx="12" cy="12" r="3" fill="currentColor"/>
+            </svg>
+          </span> 
+          HD Recording
+        </div>
+        <div class="adv-item">
+          <span class="adv-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 3a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3zM6 15a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3zm12 0a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3zM6 3a3 3 0 0 0-3 3 3 3 0 0 0 3 3 3 3 0 0 0 3-3 3 3 0 0 0-3-3zm4.5 4.5l3 3m-3 3l3-3"/>
+            </svg>
+          </span> 
+          Collaborative Tools
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ========== JOIN MODAL ========== -->
+  <div id="modal-join" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 class="modal-title">Join Meeting</h3>
+      <input type="text" id="join-code-input" class="input-field" placeholder="Enter meeting code" maxlength="12" spellcheck="false" autocomplete="off">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="join-cancel">Cancel</button>
+        <button class="btn btn-primary" id="join-confirm">Join</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SCHEDULE MODAL ========== -->
+  <div id="modal-schedule" class="modal-overlay hidden">
+    <div class="modal-box sched-modal-box">
+      <h3 class="modal-title">Schedule Meeting</h3>
+      
+      <div class="modal-form-group">
+        <label class="modal-label" for="sched-title">Meeting Title</label>
+        <input type="text" id="sched-title" class="input-field" placeholder="e.g. Weekly Sync" maxlength="80">
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-label" for="sched-datetime">Date & Time</label>
+        <input type="datetime-local" id="sched-datetime" class="input-field">
+        <div class="preset-pills">
+          <button class="preset-pill" type="button" data-preset="in15">In 15m</button>
+          <button class="preset-pill" type="button" data-preset="in30">In 30m</button>
+          <button class="preset-pill" type="button" data-preset="tomorrow">Tomorrow</button>
+        </div>
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-label" for="sched-duration">Duration</label>
+        <select id="sched-duration" class="input-field select-field">
+          <option value="15">15 Minutes</option>
+          <option value="30">30 Minutes</option>
+          <option value="45">45 Minutes</option>
+          <option value="60" selected>1 Hour</option>
+          <option value="90">1.5 Hours</option>
+          <option value="120">2 Hours</option>
+          <option value="180">3 Hours</option>
+        </select>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="sched-cancel">Cancel</button>
+        <button class="btn btn-primary" id="sched-confirm">Schedule</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SESSION LOGS VIEW ========== -->
+  <div id="view-logs" class="view">
+    <header class="logs-header">
+      <button class="btn btn-ghost" id="logs-back">← Back</button>
+      <h2 class="section-heading">Session Logs</h2>
+      <div></div>
+    </header>
+    <div id="logs-list" class="logs-list">
+      <p class="empty-state">No session history</p>
+    </div>
+  </div>
+
+  <!-- ========== MEETING ROOM VIEW ========== -->
+  <div id="view-meeting" class="view">
+    <div class="meeting-layout">
+      <!-- Top bar -->
+      <header class="meeting-header">
+        <div class="meeting-info">
+          <span class="meeting-title" id="meeting-title">Meeting</span>
+          <span class="meeting-code" id="meeting-code-display"></span>
+        </div>
+        <div class="meeting-timer">
+          <span class="timer-label" id="timer-label">Unlimited Session</span>
+          <span class="timer-value" id="meeting-timer">00:00:00</span>
+          <span class="timer-value hidden" id="breakout-timer-badge" style="background: var(--accent-coral-dim); color: var(--accent-coral); padding: 2px 6px; border-radius: var(--radius-sm); font-size: var(--text-xs); margin-left: var(--sp-3); font-weight: 600;">Breakout: 00:00</span>
+        </div>
+        <div class="meeting-header-actions">
+          <button class="btn btn-ghost" id="btn-copy-invite" style="padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs); margin-right: var(--sp-2);" title="Copy Direct Invite Link">
+            Invite
+          </button>
+          <button class="btn btn-ghost" id="btn-layout-toggle" style="padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs); margin-right: var(--sp-2);" title="Toggle Video Layout">
+            Layout: Grid
+          </button>
+          <button class="btn btn-ghost hidden" id="btn-annotate-toggle" style="padding: var(--sp-1) var(--sp-3); font-size: var(--text-xs); margin-right: var(--sp-2);" title="Annotate Shared Screen">
+            Annotate
+          </button>
+          <button class="theme-toggle-btn" id="theme-toggle-meeting" title="Toggle Light/Dark Mode" style="margin-right: var(--sp-2);">
+            <svg class="icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+            <svg class="icon-moon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          </button>
+          <button class="btn-icon" id="btn-spawn-bots" title="Spawn simulated participants">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- Meeting body: video + side panel row -->
+      <div class="meeting-body">
+        <!-- Video grid -->
+        <div class="video-area" id="video-area">
+          <div class="video-grid" id="video-grid">
+            <!-- Local video tile -->
+            <div class="video-tile local-tile" id="local-tile" data-participant="local">
+              <video id="local-video" autoplay muted playsinline></video>
+              <div class="tile-overlay">
+                <span class="tile-name" id="local-name-label">You</span>
+                <span class="tile-speaking-indicator" id="local-speaking"></span>
+              </div>
+              <div class="tile-avatar hidden" id="local-avatar">
+                <span class="avatar-letter">Y</span>
+              </div>
+            </div>
+          </div>
+          <!-- Speaker View Container -->
+          <div class="speaker-view-container hidden" id="speaker-view-container">
+            <div class="speaker-thumbnails" id="speaker-thumbnails"></div>
+            <div class="spotlight-area" id="spotlight-area" style="position: relative;">
+              <!-- Annotation toolbar -->
+              <div id="annotation-toolbar" class="annotation-toolbar hidden" style="position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 15; background: var(--bg-surface); border: 2px solid var(--border-strong); padding: var(--sp-2) var(--sp-3); display: flex; gap: var(--sp-2); align-items: center; box-shadow: var(--neo-shadow-sm); border-radius: var(--radius-sm);">
+                <span style="font-size: 11px; font-weight: bold; color: var(--accent-cyan); margin-right: var(--sp-1);">ANNOTATE:</span>
+                <button class="btn btn-ghost" id="btn-annotation-pen" style="padding: 2px 8px; font-size: 11px; background: var(--bg-elevated); border: 1px solid var(--border-strong);" title="Pen Tool">✏️ Pen</button>
+                <button class="btn btn-ghost" id="btn-annotation-eraser" style="padding: 2px 8px; font-size: 11px; border: 1px solid transparent;" title="Eraser Tool">🧹 Eraser</button>
+                <input type="color" id="annotation-color" value="#00f2fe" style="width: 24px; height: 20px; border: 1px solid var(--border-strong); cursor: pointer; background: transparent; padding: 0;">
+                <select id="annotation-width" style="height: 20px; font-size: 11px; background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-strong); outline: none;">
+                  <option value="2">2px</option>
+                  <option value="4" selected>4px</option>
+                  <option value="8">8px</option>
+                </select>
+                <button class="btn btn-ghost" id="btn-annotation-clear" style="padding: 2px 8px; font-size: 11px; border: 1px solid var(--border-strong);" title="Clear all drawings">🗑️ Clear</button>
+                <button class="btn btn-ghost" id="btn-annotation-close" style="padding: 2px 8px; font-size: 11px; background: var(--accent-coral-dim); color: var(--accent-coral); border: 1px solid var(--border-strong);" title="Stop Annotating">Exit</button>
+              </div>
+              <!-- Transparent Canvas for annotations -->
+              <canvas id="screen-annotation-canvas" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <!-- Side panel (Chat / Participants) -->
+        <aside class="side-panel hidden" id="side-panel">
+          <div class="panel-header">
+            <div class="panel-tabs">
+              <button class="panel-tab active" data-tab="chat">Chat</button>
+              <button class="panel-tab" data-tab="participants">Participants</button>
+            </div>
+            <button class="panel-close" id="panel-close" title="Close">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+
+          <!-- Chat tab -->
+          <div class="panel-content" id="tab-chat">
+            <div class="chat-messages" id="chat-messages"></div>
+            <div class="chat-recipient-row" style="padding: var(--sp-2) var(--sp-3); border-top: 1px solid var(--border-subtle); display: flex; align-items: center; gap: var(--sp-2); background: var(--bg-primary); flex-shrink: 0;">
+              <span style="font-size: var(--text-xs); color: var(--text-secondary);">To:</span>
+              <select id="chat-recipient" style="height: 28px; padding: 0 var(--sp-2); font-size: var(--text-xs); background: var(--bg-elevated); border: 1px solid var(--border-default); flex: 1; border-radius: var(--radius-sm); color: var(--text-primary); outline: none;"></select>
+            </div>
+            <div class="chat-input-row" style="border-top: none;">
+              <input type="file" id="chat-file-input" class="hidden">
+              <button class="btn-icon chat-attach-btn" id="btn-chat-attach" title="Attach file (<5MB)" style="height: 38px; width: 38px; flex-shrink: 0; padding: 0; margin-right: var(--sp-1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+              </button>
+              <input type="text" id="chat-input" class="input-field chat-field" placeholder="Type a message..." maxlength="500" autocomplete="off" style="height: 38px;">
+              <button class="btn btn-primary btn-send" id="btn-send-chat" style="height: 38px; width: 38px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: var(--sp-1);">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <!-- Participants tab -->
+          <div class="panel-content hidden" id="tab-participants">
+            <div id="waiting-queue-container" class="waiting-queue-container hidden" style="border-bottom: 1px solid var(--border-subtle); padding: var(--sp-3); background: var(--bg-secondary); flex-shrink: 0;">
+              <h4 style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: var(--sp-2); display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-top: 0;">
+                <span>Waiting Room Queue</span>
+                <span id="waiting-count-badge" class="badge" style="position: static; font-size: 10px; padding: 2px 6px;">0</span>
+              </h4>
+              <div id="waiting-list" style="display: flex; flex-direction: column; gap: var(--sp-2);"></div>
+            </div>
+            <div class="participants-list" id="participants-list" style="flex: 1;"></div>
+            <div class="participants-footer host-only hidden" id="participants-footer" style="padding: var(--sp-3); border-top: 1px solid var(--border-subtle); display: flex; flex-direction: column; gap: var(--sp-2); flex-shrink: 0; background: var(--bg-primary);">
+              <div style="display: flex; gap: var(--sp-2); width: 100%;">
+                <button class="btn btn-ghost" id="btn-toggle-waiting-room" style="font-size: var(--text-xs); padding: var(--sp-1) var(--sp-2); flex: 1; text-align: center;">Waiting Room: Off</button>
+                <button class="btn btn-ghost" id="btn-lock-meeting" style="font-size: var(--text-xs); padding: var(--sp-1) var(--sp-2); flex: 1; text-align: center;">Lock Room: Off</button>
+              </div>
+              <div style="display: flex; flex-direction: column; gap: 2px;">
+                <label style="font-size: 9px; font-weight: bold; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em;">Chat Permissions</label>
+                <select id="chat-permissions-select" class="select-field" style="font-size: var(--text-xs); height: 24px; padding: 0 var(--sp-1); background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-default); outline: none;">
+                  <option value="public-private" selected>Everyone publicly & directly</option>
+                  <option value="public">Everyone publicly (No DMs)</option>
+                  <option value="host-only">Host only</option>
+                  <option value="none">No one</option>
+                </select>
+              </div>
+              <button class="btn btn-ghost" id="btn-mute-all" style="font-size: var(--text-xs); padding: var(--sp-1) var(--sp-3); color: var(--accent-coral); border-color: var(--accent-coral-dim); width: 100%;">Mute All</button>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- Whiteboard full-screen overlay -->
+      <div class="wb-overlay hidden" id="wb-overlay">
+        <div class="wb-overlay-header">
+          <span class="wb-overlay-title">Whiteboard</span>
+          <div class="wb-toolbar">
+            <button class="wb-tool active" data-tool="pen" title="Pen">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/></svg>
+            </button>
+            <button class="wb-tool" data-tool="line" title="Line">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg>
+            </button>
+            <button class="wb-tool" data-tool="rect" title="Rectangle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/></svg>
+            </button>
+            <button class="wb-tool" data-tool="circle" title="Circle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+            </button>
+            <input type="color" id="wb-color" class="wb-color" value="#00f2fe" title="Stroke color">
+            <button class="wb-tool" data-tool="clear" title="Clear board">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          </div>
+          <button class="btn btn-ghost wb-close" id="wb-close">✕ Close</button>
+        </div>
+        <canvas id="whiteboard-canvas"></canvas>
+      </div>
+
+      <!-- Slide Presentation Overlay -->
+      <div class="wb-overlay hidden" id="slides-overlay" style="z-index: 1000; flex-direction: column;">
+        <div class="wb-overlay-header">
+          <span class="wb-overlay-title" id="slides-title">Presentation: Welcome to Apex</span>
+          <span id="slides-counter" style="font-size: var(--text-sm); font-weight: bold; color: var(--accent-cyan); margin-left: var(--sp-4);">Slide 1 of 5</span>
+          <div class="wb-toolbar" id="slides-control-bar" style="display: flex; gap: var(--sp-2); align-items: center; background: transparent; border: none; box-shadow: none;">
+            <button class="btn btn-ghost" id="btn-slides-prev" style="padding: var(--sp-1) var(--sp-3); font-size: var(--text-sm);">◀ Prev</button>
+            <button class="btn btn-ghost" id="btn-slides-next" style="padding: var(--sp-1) var(--sp-3); font-size: var(--text-sm);">Next ▶</button>
+            <span id="slides-control-status" style="font-size: var(--text-xs); color: var(--text-secondary); margin-left: var(--sp-2);">Waiting...</span>
+          </div>
+          <button class="btn btn-ghost host-only hidden" id="btn-slides-revoke" style="font-size: var(--text-xs); padding: var(--sp-1) var(--sp-2); color: var(--accent-coral); border-color: var(--accent-coral-dim); margin-right: var(--sp-2);">Revoke Control</button>
+          <button class="btn btn-ghost wb-close" id="btn-slides-close" style="color: var(--accent-coral);">✕ Stop Presentation</button>
+        </div>
+        <div id="slides-content-container" style="flex: 1; display: flex; align-items: center; justify-content: center; background: var(--bg-secondary); padding: var(--sp-6); overflow: auto; position: relative;">
+          <!-- Slide contents will be dynamically rendered here -->
+          <canvas id="slides-presenter-canvas" class="hidden" style="position: absolute; pointer-events: none; z-index: 10; width: 140px; height: 140px; right: 24px; bottom: 24px; border: 3px solid var(--border-strong); box-shadow: var(--neo-shadow-cyan); background: transparent;"></canvas>
+        </div>
+      </div>
+
+      <!-- Reactions layer -->
+      <div class="reactions-layer" id="reactions-layer"></div>
+
+      <!-- Control bar -->
+      <footer class="control-bar">
+        <div class="controls-left">
+          <span class="control-room-code" id="control-room-code"></span>
+        </div>
+        <div class="controls-center">
+          <button class="ctrl-btn" id="btn-mic" title="Toggle Microphone">
+            <svg class="icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg class="icon-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="1.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.48-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-cam" title="Toggle Camera">
+            <svg class="icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polygon points="22,8 22,12 17,10"/></svg>
+            <svg class="icon-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="1.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 17V8l-5 2"/><rect x="2" y="3" width="15" height="14" rx="2"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-screen" title="Share Screen">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="8 10 12 6 16 10"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-record" title="Record Meeting">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
+          </button>
+          <div class="ctrl-divider"></div>
+          <button class="ctrl-btn" id="btn-chat-toggle" title="Chat">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <span class="badge hidden" id="chat-badge">0</span>
+          </button>
+          <button class="ctrl-btn" id="btn-participants-toggle" title="Participants">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-whiteboard-toggle" title="Whiteboard">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+          </button>
+          <button class="ctrl-btn host-only hidden" id="btn-polls-toggle" title="Polls">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="12" y1="20" x2="21" y2="20"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+          </button>
+          <button class="ctrl-btn host-only hidden" id="btn-breakout-toggle" title="Breakout Rooms">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+          </button>
+          <button class="ctrl-btn host-only hidden" id="btn-slides-toggle" title="Share Slides">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8"/><path d="M12 17v4"/><path d="m10 8 5 3-5 3z"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-reactions" title="Reactions">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg>
+          </button>
+          <button class="ctrl-btn" id="btn-hand" title="Raise Hand">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v7"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
+          </button>
+        </div>
+        <div class="controls-right">
+          <button class="ctrl-btn" id="btn-settings" title="Settings" style="margin-right: var(--sp-1);">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          </button>
+          <button class="ctrl-btn ctrl-leave" id="btn-leave" title="Leave Meeting">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span>Leave</span>
+          </button>
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Reactions picker popup -->
+  <div class="reactions-picker hidden" id="reactions-picker">
+    <button class="reaction-btn" data-emoji="👍">👍</button>
+    <button class="reaction-btn" data-emoji="👏">👏</button>
+    <button class="reaction-btn" data-emoji="❤️">❤️</button>
+    <button class="reaction-btn" data-emoji="😂">😂</button>
+    <button class="reaction-btn" data-emoji="🎉">🎉</button>
+    <button class="reaction-btn" data-emoji="🔥">🔥</button>
+    <button class="reaction-btn" data-emoji="💯">💯</button>
+    <button class="reaction-btn" data-emoji="✋">✋</button>
+  </div>
+
+  <!-- ========== HOST BREAKOUT MODAL ========== -->
+  <div id="modal-breakout-host" class="modal-overlay hidden">
+    <div class="modal-box">
+      <h3 class="modal-title">Breakout Rooms</h3>
+      <div id="breakout-setup-view">
+        <div class="modal-form-group">
+          <label class="modal-label" for="breakout-rooms-count">Number of Rooms</label>
+          <select id="breakout-rooms-count" class="input-field select-field">
+            <option value="2" selected>2 Rooms</option>
+            <option value="3">3 Rooms</option>
+            <option value="4">4 Rooms</option>
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="breakout-duration">Duration</label>
+          <select id="breakout-duration" class="input-field select-field">
+            <option value="1" selected>1 Minute</option>
+            <option value="2">2 Minutes</option>
+            <option value="5">5 Minutes</option>
+            <option value="10">10 Minutes</option>
+          </select>
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label" for="breakout-csv-file">Pre-assign Rooms via CSV (Optional)</label>
+          <input type="file" id="breakout-csv-file" accept=".csv" class="input-field" style="padding: var(--sp-1);">
+          <small id="breakout-csv-status" style="color: var(--accent-cyan); font-size: var(--text-xs); margin-top: var(--sp-1); display: block;"></small>
+        </div>
+        <div class="modal-form-group" style="display: flex; align-items: center; gap: var(--sp-2); padding: var(--sp-1) 0;">
+          <input type="checkbox" id="breakout-self-select" style="width: 16px; height: 16px; cursor: pointer; accent-color: var(--accent-cyan);">
+          <label for="breakout-self-select" style="margin: 0; cursor: pointer; font-size: var(--text-sm);">Allow participants to self-select subrooms</label>
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="breakout-cancel">Cancel</button>
+          <button class="btn btn-primary" id="breakout-start-btn">Start Breakouts</button>
+        </div>
+      </div>
+      <div id="breakout-active-view" class="hidden">
+        <p style="font-size: var(--text-sm); margin-bottom: var(--sp-4); color: var(--text-secondary);">Breakout rooms are currently running. Participants have been distributed.</p>
+        <div class="modal-actions">
+          <button class="btn btn-primary" id="breakout-end-btn" style="background: var(--accent-coral); border-color: var(--accent-coral); color: #fff;">End Breakouts</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PARTICIPANT BREAKOUT SELECTION MODAL ========== -->
+  <div id="modal-breakout-participant" class="modal-overlay hidden" style="z-index: 1100;">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 class="modal-title">Join Breakout Room</h3>
+      <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--sp-3);">The host has opened breakout rooms. Please select a room to join:</p>
+      <div id="breakout-rooms-list" style="display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-4); max-height: 200px; overflow-y: auto;">
+        <!-- Rooms list with Join buttons -->
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-ghost btn-block" id="breakout-participant-close-btn">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== HOST POLL MODAL ========== -->
+  <div id="modal-poll-host" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 450px;">
+      <h3 class="modal-title" id="poll-host-title">Create Poll</h3>
+      
+      <!-- Creation mode -->
+      <div id="poll-create-view">
+        <div class="modal-form-group">
+          <label class="modal-label" for="poll-question">Question</label>
+          <input type="text" id="poll-question" class="input-field" placeholder="Type poll question..." maxlength="120">
+        </div>
+        <div class="modal-form-group">
+          <label class="modal-label">Options</label>
+          <input type="text" id="poll-opt-1" class="input-field" placeholder="Option 1" maxlength="60" style="margin-bottom: var(--sp-2);">
+          <input type="text" id="poll-opt-2" class="input-field" placeholder="Option 2" maxlength="60" style="margin-bottom: var(--sp-2);">
+          <input type="text" id="poll-opt-3" class="input-field" placeholder="Option 3 (Optional)" maxlength="60" style="margin-bottom: var(--sp-2);">
+          <input type="text" id="poll-opt-4" class="input-field" placeholder="Option 4 (Optional)" maxlength="60;">
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="poll-host-cancel">Cancel</button>
+          <button class="btn btn-primary" id="poll-launch-btn">Launch Poll</button>
+        </div>
+      </div>
+
+      <!-- Live Tally & Share mode -->
+      <div id="poll-tally-view" class="hidden">
+        <h4 id="poll-tally-question" style="font-size: var(--text-base); font-weight: 500; margin-bottom: var(--sp-4);"></h4>
+        <div id="poll-tally-results" style="display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4);">
+          <!-- Dynamic progress bars -->
+        </div>
+        <div class="modal-actions">
+          <button class="btn btn-ghost" id="poll-host-close" style="display: none;">Close</button>
+          <button class="btn btn-primary" id="poll-end-share-btn">End & Share Results</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== PARTICIPANT POLL MODAL ========== -->
+  <div id="modal-poll-participant" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 400px;">
+      <h3 class="modal-title">Poll</h3>
+      
+      <!-- Voting mode -->
+      <div id="poll-vote-view">
+        <h4 id="poll-vote-question" style="font-size: var(--text-base); font-weight: 500; margin-bottom: var(--sp-4);"></h4>
+        <div id="poll-vote-options" style="display: flex; flex-direction: column; gap: var(--sp-2); margin-bottom: var(--sp-4);">
+          <!-- Options list with radios/buttons -->
+        </div>
+        <button class="btn btn-primary btn-block" id="poll-submit-vote-btn">Submit Vote</button>
+      </div>
+
+      <!-- Results/Waiting view -->
+      <div id="poll-wait-view" class="hidden">
+        <p id="poll-wait-text" style="font-size: var(--text-sm); text-align: center; color: var(--text-secondary); margin-bottom: var(--sp-4);">Vote submitted. Waiting for host to share results...</p>
+        <div id="poll-participant-results" class="hidden" style="display: flex; flex-direction: column; gap: var(--sp-3); margin-bottom: var(--sp-4);">
+          <!-- Final shared progress bars -->
+        </div>
+        <button class="btn btn-ghost btn-block" id="poll-participant-close" style="display: none;">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== WAITING ROOM OVERLAY ========== -->
+  <div id="waiting-room-overlay" class="modal-overlay hidden" style="z-index: 9999; backdrop-filter: blur(16px); background: rgba(10, 10, 15, 0.95); display: flex; align-items: center; justify-content: center; position: fixed; inset: 0;">
+    <div class="modal-box" style="max-width: 450px; text-align: center; border: 1px solid var(--accent-cyan-dim); box-shadow: 0 0 40px rgba(0, 242, 254, 0.15);">
+      <div style="margin-bottom: var(--sp-6);">
+        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#00f2fe" stroke-width="1" stroke-linecap="round" style="animation: pulse 2s infinite ease-in-out;">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      </div>
+      <h2 style="font-family: 'Space Grotesk', sans-serif; font-size: var(--text-2xl); font-weight: 600; margin-bottom: var(--sp-3); color: var(--text-primary);">Waiting Room</h2>
+      <p id="waiting-room-message" style="font-size: var(--text-base); color: var(--text-secondary); line-height: 1.6; margin-bottom: var(--sp-6);">Please wait, the meeting host will let you in soon.</p>
+      <div style="font-size: var(--text-sm); color: var(--accent-cyan); font-weight: 500; letter-spacing: 0.05em; text-transform: uppercase;" id="waiting-room-meeting-title">Connecting...</div>
+      <button class="btn btn-ghost" id="btn-cancel-waiting" style="margin-top: var(--sp-6); width: 100%;">Leave Meeting</button>
+    </div>
+  </div>
+
+  <!-- ========== SETTINGS MODAL ========== -->
+  <div id="modal-settings" class="modal-overlay hidden">
+    <div class="modal-box" style="max-width: 450px;">
+      <h3 class="modal-title">Settings</h3>
+      
+      <div class="modal-form-group">
+        <label class="modal-label" for="settings-camera">Camera</label>
+        <select id="settings-camera" class="select-field">
+          <option value="">Loading cameras...</option>
+        </select>
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-label" for="settings-mic">Microphone</label>
+        <select id="settings-mic" class="select-field">
+          <option value="">Loading microphones...</option>
+        </select>
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-label" for="settings-speaker">Speaker (Audio Output)</label>
+        <select id="settings-speaker" class="select-field">
+          <option value="">Default Speaker</option>
+        </select>
+        <small style="color: var(--text-secondary); font-size: var(--text-xs); margin-top: var(--sp-1); display: block; line-height: 1.4;">Note: Audio output device changes are supported in compatible browsers (e.g. Chrome/Edge).</small>
+      </div>
+
+      <div class="modal-form-group">
+        <label class="modal-label" for="settings-video-filter">Video Filter</label>
+        <select id="settings-video-filter" class="select-field">
+          <option value="none" selected>None</option>
+          <option value="grayscale">Grayscale</option>
+          <option value="sepia">Sepia</option>
+          <option value="invert">Invert</option>
+          <option value="blur">Blur</option>
+        </select>
+      </div>
+
+      <div class="modal-form-group" style="display: flex; align-items: center; justify-content: space-between; padding: var(--sp-2) 0;">
+        <label class="modal-label" for="settings-noise-suppression" style="margin: 0; cursor: pointer;">Enable Noise Suppression (Noise Gate)</label>
+        <input type="checkbox" id="settings-noise-suppression" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-cyan);">
+      </div>
+
+      <div class="modal-form-group" style="display: flex; align-items: center; justify-content: space-between; padding: var(--sp-2) 0; border-top: 1px solid var(--border-subtle); margin-top: var(--sp-2);">
+        <label class="modal-label" for="settings-presenter-overlay" style="margin: 0; cursor: pointer;">Enable Presenter Video Overlay on Slides</label>
+        <input type="checkbox" id="settings-presenter-overlay" style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent-cyan);">
+      </div>
+
+      <div class="modal-form-group id-presenter-overlay-options hidden">
+        <label class="modal-label" for="settings-overlay-type">Overlay Style</label>
+        <select id="settings-overlay-type" class="select-field">
+          <option value="bubble" selected>Portrait Bubble (Circular crop)</option>
+          <option value="chromakey">Chroma Key (Weather Broadcaster)</option>
+        </select>
+      </div>
+
+      <div class="modal-form-group id-presenter-overlay-options id-chroma-options hidden">
+        <label class="modal-label" for="settings-chroma-color" style="margin-bottom: var(--sp-1);">Chroma Key Color</label>
+        <select id="settings-chroma-color" class="select-field" style="margin-bottom: var(--sp-2);">
+          <option value="green" selected>Green Screen (RGB: 0, 255, 0)</option>
+          <option value="blue">Blue Screen (RGB: 0, 0, 255)</option>
+          <option value="dark">Dark Background (RGB: &lt; 50)</option>
+        </select>
+        <label class="modal-label" for="settings-chroma-tolerance" style="margin-bottom: var(--sp-1);">Chroma Key Tolerance</label>
+        <input type="range" id="settings-chroma-tolerance" min="30" max="150" value="80" style="width: 100%; cursor: pointer;">
+      </div>
+
+      <div class="modal-actions" style="margin-top: var(--sp-4);">
+        <button class="btn btn-primary btn-block" id="btn-settings-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== SESSION LOG DETAILS MODAL ========== -->
+  <div id="modal-log-details" class="modal-overlay hidden" style="z-index: 2000;">
+    <div class="modal-box" style="max-width: 600px; width: 90%;">
+      <h3 class="modal-title" id="log-details-title">Session Details</h3>
+      <div style="max-height: 350px; overflow-y: auto; margin-bottom: var(--sp-4); border: 2px solid var(--border-strong); background: var(--bg-primary);">
+        <table style="width: 100%; border-collapse: collapse; font-size: var(--text-sm); text-align: left; color: var(--text-primary);">
+          <thead>
+            <tr style="border-bottom: 2px solid var(--border-strong); background: var(--bg-elevated); color: var(--text-primary);">
+              <th style="padding: var(--sp-2) var(--sp-3); border-right: 1px solid var(--border-subtle);">Name</th>
+              <th style="padding: var(--sp-2) var(--sp-3); border-right: 1px solid var(--border-subtle);">Role</th>
+              <th style="padding: var(--sp-2) var(--sp-3); border-right: 1px solid var(--border-subtle);">Joined</th>
+              <th style="padding: var(--sp-2) var(--sp-3); border-right: 1px solid var(--border-subtle);">Left</th>
+              <th style="padding: var(--sp-2) var(--sp-3);">Duration</th>
+            </tr>
+          </thead>
+          <tbody id="log-details-tbody">
+            <!-- Dynamic rows -->
+          </tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary btn-block" id="btn-log-details-close">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== UNMUTE PROMPT MODAL ========== -->
+  <div id="modal-unmute-prompt" class="modal-overlay hidden" style="z-index: 9999;">
+    <div class="modal-box" style="max-width: 400px; text-align: center;">
+      <h3 class="modal-title">Unmute Microphone?</h3>
+      <p style="font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--sp-4);">The host has requested that you unmute your microphone.</p>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="btn-unmute-decline">Stay Muted</button>
+        <button class="btn btn-primary" id="btn-unmute-accept" style="flex: 1;">Unmute Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
