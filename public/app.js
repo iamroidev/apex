@@ -60,6 +60,10 @@
     bots: [],
     botIntervals: [],
 
+    // LiveKit
+    livekitRoom: null,
+    livekitConnected: false,
+
     // Peers (for real WebRTC)
     peers: new Map(), // socketId -> { pc, stream, info }
 
@@ -390,6 +394,74 @@
     dom.viewLogs.classList.toggle('active', name === 'logs');
   }
 
+  function updateDashboardAvatar() {
+    const avatarEl = document.getElementById('dash-avatar');
+    if (!avatarEl) return;
+    const name = localStorage.getItem('apexDisplayName') || state.userName || state.user?.username || 'A';
+    const color = localStorage.getItem('apexAvatarColor') || '#00f2fe';
+    avatarEl.textContent = name.charAt(0).toUpperCase();
+    avatarEl.style.backgroundColor = color;
+  }
+
+  function initGoogleAuth() {
+    // Bind fallback button handler
+    const fallbackBtn = document.getElementById("google-signin-fallback");
+    if (fallbackBtn && !fallbackBtn.dataset.bound) {
+      fallbackBtn.dataset.bound = "true";
+      fallbackBtn.addEventListener('click', () => {
+        alert("Google Sign-In is disabled on insecure connections (HTTP). Please access the application via a secure HTTPS domain or localhost.");
+      });
+    }
+
+    if (window.google && window.google.accounts) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: "607768078052-16lmjehbrsfsfdhka89efg0d48vr7cev.apps.googleusercontent.com",
+          callback: handleGoogleCredentialResponse
+        });
+        const btnContainer = document.getElementById("google-signin-btn");
+        if (btnContainer) {
+          window.google.accounts.id.renderButton(btnContainer, {
+            theme: "outline",
+            size: "large",
+            width: 290
+          });
+        }
+      } catch (err) {
+        console.warn("Google Auth SDK initialization failed:", err);
+      }
+    } else {
+      setTimeout(initGoogleAuth, 100);
+    }
+  }
+
+  async function handleGoogleCredentialResponse(response) {
+    try {
+      const res = await fetch('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential: response.credential })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        state.user = data;
+        state.userName = data.username;
+        dom.dashUsernameDisplay.textContent = data.username;
+        updateDashboardAvatar();
+        showView('dashboard');
+        loadUpcoming();
+      } else {
+        const errEl = document.getElementById('login-error');
+        if (errEl) {
+          errEl.textContent = data.error || 'Google login failed';
+          errEl.classList.remove('hidden');
+        }
+      }
+    } catch (err) {
+      console.error('Google Auth communication error:', err);
+    }
+  }
+
   // ============================================================
   // CLOCK
   // ============================================================
@@ -440,14 +512,36 @@
 
     // Check invite code in URL query params
     const urlParams = new URLSearchParams(window.location.search);
-    const inviteRoom = urlParams.get('room');
+    const inviteRoom = urlParams.get('join') || urlParams.get('room');
     if (inviteRoom) {
       dom.landingJoinCode.value = inviteRoom;
+      // Show invite banner
+      const banner = document.getElementById('invite-banner');
+      const bannerCode = document.getElementById('invite-banner-code');
+      const joinTitle = document.getElementById('quick-join-title');
+      const subtitle = document.querySelector('.landing-subtitle');
+      if (banner) banner.classList.remove('hidden');
+      if (bannerCode) bannerCode.textContent = `Room: ${inviteRoom}`;
+      if (joinTitle) joinTitle.textContent = 'Enter your name to join';
+      if (subtitle) subtitle.style.display = 'none';
+      // Lock the code field — it's pre-filled from the invite
+      dom.landingJoinCode.readOnly = true;
+      dom.landingJoinCode.style.opacity = '0.5';
+      // Pre-fill name if they have a saved profile
+      const savedName = localStorage.getItem('apexDisplayName');
+      if (savedName && dom.landingJoinName) dom.landingJoinName.value = savedName;
+      // Focus name input so they just type and hit join
+      setTimeout(() => (dom.landingJoinName || dom.landingJoinCode).focus(), 120);
+      // Clean URL without reloading
+      window.history.replaceState({}, '', window.location.pathname);
     }
 
     // Connect socket
     state.socket = io();
     bindSocketEvents();
+
+    // Initialize Google Authentication Sign-In
+    initGoogleAuth();
 
     // Check Auth Session on startup
     try {
@@ -457,6 +551,7 @@
         state.user = data.user;
         state.userName = data.user.username;
         dom.dashUsernameDisplay.textContent = data.user.username;
+        updateDashboardAvatar();
         showView('dashboard');
         loadUpcoming();
       } else {
@@ -504,6 +599,7 @@
           state.user = data;
           state.userName = data.username;
           dom.dashUsernameDisplay.textContent = data.username;
+          updateDashboardAvatar();
           showView('dashboard');
           loadUpcoming();
         } else {
@@ -533,6 +629,7 @@
           state.user = data;
           state.userName = data.username;
           dom.dashUsernameDisplay.textContent = data.username;
+          updateDashboardAvatar();
           showView('dashboard');
           loadUpcoming();
         } else {
@@ -597,7 +694,67 @@
       showView('landing');
     });
 
-    // Schedule
+    // ---- Profile Editing ----
+    const profileModal  = $('#modal-profile');
+    const btnEditProfile = $('#btn-edit-profile');
+    const profileNameInput = $('#profile-display-name');
+    const profileAvatarPreview = $('#profile-avatar-preview');
+    const profileSaveMsg = $('#profile-save-msg');
+    let selectedProfileColor = localStorage.getItem('apexAvatarColor') || '#00f2fe';
+
+    function updateAvatarPreview() {
+      const name = profileNameInput.value.trim() || state.userName || 'A';
+      profileAvatarPreview.textContent = name.charAt(0).toUpperCase();
+      profileAvatarPreview.style.background = selectedProfileColor;
+    }
+
+    if (btnEditProfile) {
+      btnEditProfile.addEventListener('click', () => {
+        profileNameInput.value = localStorage.getItem('apexDisplayName') || state.userName || '';
+        selectedProfileColor = localStorage.getItem('apexAvatarColor') || '#00f2fe';
+        // Mark active swatch
+        document.querySelectorAll('.profile-swatch').forEach(s => {
+          s.style.outline = s.dataset.color === selectedProfileColor ? '3px solid #fff' : 'none';
+          s.style.outlineOffset = '2px';
+        });
+        profileSaveMsg.textContent = '';
+        updateAvatarPreview();
+        profileModal.classList.remove('hidden');
+      });
+    }
+
+    document.querySelectorAll('.profile-swatch').forEach(swatch => {
+      swatch.addEventListener('click', () => {
+        selectedProfileColor = swatch.dataset.color;
+        document.querySelectorAll('.profile-swatch').forEach(s => {
+          s.style.outline = 'none';
+        });
+        swatch.style.outline = '3px solid #fff';
+        swatch.style.outlineOffset = '2px';
+        updateAvatarPreview();
+      });
+    });
+
+    if (profileNameInput) profileNameInput.addEventListener('input', updateAvatarPreview);
+
+    $('#profile-cancel').addEventListener('click', () => profileModal.classList.add('hidden'));
+
+    $('#profile-save').addEventListener('click', () => {
+      const newName = profileNameInput.value.trim();
+      if (!newName) { profileSaveMsg.style.color = 'var(--accent-coral)'; profileSaveMsg.textContent = 'Name cannot be empty.'; return; }
+      localStorage.setItem('apexDisplayName', newName);
+      localStorage.setItem('apexAvatarColor', selectedProfileColor);
+      // Update displayed name in header
+      if (dom.dashUsernameDisplay) dom.dashUsernameDisplay.textContent = newName;
+      updateDashboardAvatar();
+      // Update state so new meetings use the new name
+      state.displayName = newName;
+      profileSaveMsg.style.color = 'var(--accent-cyan)';
+      profileSaveMsg.textContent = 'Profile saved.';
+      setTimeout(() => profileModal.classList.add('hidden'), 900);
+    });
+
+
     dom.btnSchedule.addEventListener('click', () => {
       dom.modalSchedule.classList.remove('hidden');
       const name = state.userName || 'My';
@@ -702,6 +859,34 @@
     startTimer();
     await initMedia();
     updateParticipantsList();
+
+    // Fetch LiveKit Token
+    let tokenData = null;
+    try {
+      const res = await fetch('/api/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomId: roomId,
+          identity: state.participantId,
+          name: name
+        })
+      });
+      tokenData = await res.json();
+    } catch (e) {
+      console.warn('Failed to fetch LiveKit token, falling back to sandbox mode', e);
+      tokenData = { token: null, sandbox: true, wsUrl: null };
+    }
+
+    if (tokenData && !tokenData.sandbox && tokenData.token) {
+      state.sandboxMode = false;
+      await connectToLiveKit(tokenData.wsUrl, tokenData.token);
+    } else {
+      state.sandboxMode = true;
+      state.livekitConnected = false;
+      state.livekitRoom = null;
+    }
+
     connectToRoom(roomId);
     updateVideoGridCount();
   }
@@ -751,19 +936,23 @@
       const dt = new Date(m.scheduled_for);
       const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      const inviteLink = `${location.origin}/?join=${m.id}`;
       return `
         <div class="upcoming-item">
           <div class="upcoming-item-info">
             <span class="upcoming-item-title">${escapeHtml(m.title)}</span>
             <span class="upcoming-item-time">${dateStr} at ${timeStr} · ${m.duration_minutes}min</span>
+            <span class="upcoming-item-link" style="font-size:var(--text-xs);color:var(--accent-cyan);word-break:break-all;margin-top:2px;display:block;">${inviteLink}</span>
           </div>
           <div class="upcoming-item-actions">
+            <button class="btn btn-ghost" style="font-size:var(--text-xs);padding:var(--sp-1) var(--sp-2);" onclick="window._apex.copyScheduledLink('${m.id}', this)" title="Copy invite link">Copy Link</button>
             <button class="btn btn-primary" onclick="window._apex.joinMeeting('${m.id}')">Start</button>
             <button class="btn btn-ghost" onclick="window._apex.deleteScheduled('${m.id}')">✕</button>
           </div>
         </div>`;
     }).join('');
   }
+
 
   async function deleteScheduled(id) {
     try { await fetch(`/api/scheduled/${id}`, { method: 'DELETE' }); } catch (e) { /* ok */ }
@@ -899,9 +1088,32 @@
   function startTimer() {
     state.meetingStartTime = Date.now();
     clearInterval(state.timerInterval);
+
+    const durationMs = state.sessionData?.duration_minutes
+      ? state.sessionData.duration_minutes * 60 * 1000
+      : null;
+
+    if (durationMs) {
+      dom.timerLabel.textContent = 'Time Remaining';
+      dom.timerLabel.style.color = 'var(--accent-cyan)';
+    } else {
+      dom.timerLabel.textContent = 'Unlimited Session';
+      dom.timerLabel.style.color = 'var(--accent-green)';
+    }
+
     state.timerInterval = setInterval(() => {
       const elapsed = Math.floor((Date.now() - state.meetingStartTime) / 1000);
-      dom.meetingTimer.textContent = formatTime(elapsed);
+      if (durationMs) {
+        const remaining = Math.max(0, Math.floor((durationMs - (Date.now() - state.meetingStartTime)) / 1000));
+        dom.meetingTimer.textContent = formatTime(remaining);
+        if (remaining <= 300) {
+          dom.timerLabel.style.color = 'var(--accent-coral)';
+          dom.timerLabel.textContent = remaining <= 0 ? 'Time Up' : 'Ending Soon';
+        }
+        if (remaining === 0) clearInterval(state.timerInterval);
+      } else {
+        dom.meetingTimer.textContent = formatTime(elapsed);
+      }
     }, 1000);
   }
 
@@ -924,6 +1136,171 @@
     });
   }
 
+  async function connectToLiveKit(wsUrl, token) {
+    try {
+      const room = new LivekitClient.Room({
+        adaptiveStream: true,
+        dynacast: true,
+        publishDefaults: {
+          videoSimulcast: true,
+          screenShareSimulcast: true
+        }
+      });
+      state.livekitRoom = room;
+      state.livekitConnected = true;
+
+      room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
+        if (track.kind === 'video') {
+          createLiveKitTile(participant.identity, participant.name);
+          const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+          if (tile) {
+            const video = tile.querySelector('video');
+            if (video) {
+              track.attach(video);
+              tile.querySelector('.tile-avatar').classList.add('hidden');
+              
+              if (publication.source === 'screen_share') {
+                tile.classList.add('screen-sharing');
+              }
+              
+              const peer = [...state.peers.values()].find(p => p.info.participantId === participant.identity);
+              if (peer && peer.info.videoFilter) {
+                video.style.filter = getCSSFilter(peer.info.videoFilter);
+              }
+            }
+          }
+          updateVideoGridCount();
+        } else if (track.kind === 'audio') {
+          createLiveKitTile(participant.identity, participant.name);
+          const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+          if (tile) {
+            let audio = tile.querySelector('audio');
+            if (!audio) {
+              audio = document.createElement('audio');
+              audio.autoplay = true;
+              tile.appendChild(audio);
+            }
+            track.attach(audio);
+          }
+        }
+      });
+
+      room.on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, publication, participant) => {
+        track.detach();
+        if (publication.source === 'screen_share') {
+          const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+          if (tile) {
+            tile.classList.remove('screen-sharing');
+            const cameraPub = participant.trackPublications.find(pub => pub.source === 'camera' || pub.source === 'video');
+            if (cameraPub && cameraPub.track) {
+              const video = tile.querySelector('video');
+              if (video) {
+                cameraPub.track.attach(video);
+              }
+            } else {
+              tile.querySelector('.tile-avatar').classList.remove('hidden');
+            }
+          }
+        } else if (track.kind === 'video') {
+          const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+          if (tile) {
+            tile.querySelector('.tile-avatar').classList.remove('hidden');
+          }
+        }
+      });
+
+      room.on(LivekitClient.RoomEvent.ActiveSpeakersChanged, (speakers) => {
+        const remoteTiles = dom.videoGrid.querySelectorAll('.video-tile:not(.local-tile)');
+        remoteTiles.forEach(t => t.classList.remove('speaking'));
+        
+        speakers.forEach(speaker => {
+          if (speaker.identity === state.participantId) {
+            dom.localTile.classList.add('speaking');
+          } else {
+            const tile = document.querySelector(`.video-tile[data-participant="${speaker.identity}"]`);
+            if (tile) tile.classList.add('speaking');
+          }
+        });
+      });
+
+      room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
+        createLiveKitTile(participant.identity, participant.name);
+        updateVideoGridCount();
+      });
+
+      room.on(LivekitClient.RoomEvent.ParticipantDisconnected, (participant) => {
+        const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+        if (tile) tile.remove();
+        updateVideoGridCount();
+      });
+
+      await room.connect(wsUrl, token);
+      console.log('Connected to LiveKit Room:', room.name);
+
+      room.participants.forEach((participant) => {
+        createLiveKitTile(participant.identity, participant.name);
+        participant.trackPublications.forEach((pub) => {
+          if (pub.isSubscribed && pub.track) {
+            const tile = document.querySelector(`.video-tile[data-participant="${participant.identity}"]`);
+            if (tile) {
+              const video = tile.querySelector('video');
+              if (video && pub.track.kind === 'video') {
+                pub.track.attach(video);
+                tile.querySelector('.tile-avatar').classList.add('hidden');
+              }
+            }
+          }
+        });
+      });
+      updateVideoGridCount();
+
+      if (state.localStream) {
+        const videoTrack = state.localStream.getVideoTracks()[0];
+        if (videoTrack && state.camEnabled) {
+          await room.localParticipant.publishTrack(videoTrack, { name: 'camera' });
+        }
+        const audioTrack = state.localStream.getAudioTracks()[0];
+        if (audioTrack && state.micEnabled) {
+          await room.localParticipant.publishTrack(audioTrack, { name: 'microphone' });
+        }
+      }
+    } catch (e) {
+      console.error('Error connecting to LiveKit room:', e);
+      state.sandboxMode = true;
+      state.livekitConnected = false;
+      state.livekitRoom = null;
+      alert('Failed to connect to media server. Running in fallback mode.');
+    }
+  }
+
+  function createLiveKitTile(participantId, displayName) {
+    if (document.querySelector(`.video-tile[data-participant="${participantId}"]`)) return;
+    
+    const tile = document.createElement('div');
+    tile.className = 'video-tile';
+    tile.dataset.participant = participantId;
+    
+    const video = document.createElement('video');
+    video.autoplay = true;
+    video.playsInline = true;
+    tile.appendChild(video);
+    
+    const overlay = document.createElement('div');
+    overlay.className = 'tile-overlay';
+    overlay.innerHTML = `
+      <span class="tile-name">${escapeHtml(displayName || 'Participant')}</span>
+      <span class="tile-speaking-indicator"></span>
+    `;
+    tile.appendChild(overlay);
+    
+    const avatar = document.createElement('div');
+    avatar.className = 'tile-avatar';
+    avatar.innerHTML = `<span class="avatar-letter">${(displayName || 'P').charAt(0).toUpperCase()}</span>`;
+    tile.appendChild(avatar);
+    
+    dom.videoGrid.appendChild(tile);
+  }
+
   function bindSocketEvents() {
     const s = state.socket;
 
@@ -940,7 +1317,7 @@
       updateParticipantsList();
       updateVideoGridCount();
       // Initiate WebRTC offer to new peer
-      if (state.localStream) {
+      if (state.sandboxMode && state.localStream) {
         createOffer(data.socketId);
       }
     });
@@ -953,20 +1330,26 @@
 
     // WebRTC signaling
     s.on('signal-offer', async ({ fromSocketId, offer }) => {
-      await handleOffer(fromSocketId, offer);
+      if (state.sandboxMode) {
+        await handleOffer(fromSocketId, offer);
+      }
     });
 
     s.on('signal-answer', async ({ fromSocketId, answer }) => {
-      const peer = state.peers.get(fromSocketId);
-      if (peer && peer.pc) {
-        await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+      if (state.sandboxMode) {
+        const peer = state.peers.get(fromSocketId);
+        if (peer && peer.pc) {
+          await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+        }
       }
     });
 
     s.on('signal-candidate', async ({ fromSocketId, candidate }) => {
-      const peer = state.peers.get(fromSocketId);
-      if (peer && peer.pc) {
-        try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { /* ok */ }
+      if (state.sandboxMode) {
+        const peer = state.peers.get(fromSocketId);
+        if (peer && peer.pc) {
+          try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { /* ok */ }
+        }
       }
     });
 
@@ -1223,7 +1606,9 @@
   function addRemotePeer(socketId, info) {
     if (state.peers.has(socketId)) return;
     state.peers.set(socketId, { pc: null, stream: null, info });
-    createRemoteTile(socketId, info);
+    if (state.sandboxMode) {
+      createRemoteTile(socketId, info);
+    }
   }
 
   function removeRemotePeer(socketId) {
@@ -1390,6 +1775,10 @@
     state.micEnabled = !state.micEnabled;
     state.localStream.getAudioTracks().forEach(t => t.enabled = state.micEnabled);
     dom.btnMic.classList.toggle('muted', !state.micEnabled);
+
+    if (state.livekitConnected && state.livekitRoom) {
+      state.livekitRoom.localParticipant.setMicrophoneEnabled(state.micEnabled).catch(e => console.warn('setMicrophoneEnabled failed:', e));
+    }
   }
 
   function toggleCam() {
@@ -1398,26 +1787,34 @@
     state.localStream.getVideoTracks().forEach(t => t.enabled = state.camEnabled);
     dom.btnCam.classList.toggle('muted', !state.camEnabled);
     dom.localAvatar.classList.toggle('hidden', state.camEnabled);
+
+    if (state.livekitConnected && state.livekitRoom) {
+      state.livekitRoom.localParticipant.setCameraEnabled(state.camEnabled).catch(e => console.warn('setCameraEnabled failed:', e));
+    }
   }
 
   async function toggleScreenShare() {
     if (state.isSharingScreen) {
-      // Stop sharing
-      if (state.screenStream) {
-        state.screenStream.getTracks().forEach(t => t.stop());
-        state.screenStream = null;
-      }
-      
-      // Restore camera track in peer connections for others
-      state.peers.forEach((peer) => {
-        if (peer.pc && state.localStream) {
-          const sender = peer.pc.getSenders().find(s => s.track?.kind === 'video');
-          const cameraTrack = state.localStream.getVideoTracks()[0];
-          if (sender && cameraTrack) {
-            sender.replaceTrack(cameraTrack);
-          }
+      if (state.livekitConnected && state.livekitRoom) {
+        await state.livekitRoom.localParticipant.setScreenShareEnabled(false);
+      } else {
+        // Stop sharing
+        if (state.screenStream) {
+          state.screenStream.getTracks().forEach(t => t.stop());
+          state.screenStream = null;
         }
-      });
+        
+        // Restore camera track in peer connections for others
+        state.peers.forEach((peer) => {
+          if (peer.pc && state.localStream) {
+            const sender = peer.pc.getSenders().find(s => s.track?.kind === 'video');
+            const cameraTrack = state.localStream.getVideoTracks()[0];
+            if (sender && cameraTrack) {
+              sender.replaceTrack(cameraTrack);
+            }
+          }
+        });
+      }
 
       dom.localTile.classList.remove('screen-sharing');
       state.isSharingScreen = false;
@@ -1429,28 +1826,32 @@
       onScreenShareActive(false);
     } else {
       try {
-        state.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        if (state.livekitConnected && state.livekitRoom) {
+          await state.livekitRoom.localParticipant.setScreenShareEnabled(true);
+        } else {
+          state.screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          
+          // Auto-stop when user clicks browser's "Stop Sharing"
+          state.screenStream.getVideoTracks()[0].onended = () => {
+            toggleScreenShare();
+          };
+
+          // Replace tracks in peer connections with screen share track
+          state.peers.forEach((peer) => {
+            if (peer.pc) {
+              const sender = peer.pc.getSenders().find(s => s.track?.kind === 'video');
+              if (sender && state.screenStream.getVideoTracks()[0]) {
+                sender.replaceTrack(state.screenStream.getVideoTracks()[0]);
+              }
+            }
+          });
+        }
         
         // Show indicator on local tile but keep local video showing camera feed to prevent "hall of mirrors"
         dom.localTile.classList.add('screen-sharing');
         
         state.isSharingScreen = true;
         dom.btnScreen.classList.add('active');
-
-        // Auto-stop when user clicks browser's "Stop Sharing"
-        state.screenStream.getVideoTracks()[0].onended = () => {
-          toggleScreenShare();
-        };
-
-        // Replace tracks in peer connections with screen share track
-        state.peers.forEach((peer) => {
-          if (peer.pc) {
-            const sender = peer.pc.getSenders().find(s => s.track?.kind === 'video');
-            if (sender && state.screenStream.getVideoTracks()[0]) {
-              sender.replaceTrack(state.screenStream.getVideoTracks()[0]);
-            }
-          }
-        });
 
         if (state.socket) {
           state.socket.emit('screenshare-start', { roomId: state.roomId });
@@ -1574,6 +1975,17 @@
       if (peer.pc) peer.pc.close();
     });
     state.peers.clear();
+
+    // Disconnect LiveKit Room if connected
+    if (state.livekitRoom) {
+      try {
+        state.livekitRoom.disconnect();
+      } catch (e) {
+        console.warn('Error disconnecting from LiveKit room:', e);
+      }
+      state.livekitRoom = null;
+    }
+    state.livekitConnected = false;
 
     // Disconnect from room
     state.socket.emit('leave-room', { roomId: state.roomId });
@@ -2541,6 +2953,17 @@
           }
         }
       });
+
+      // Update LiveKit if connected
+      if (state.livekitConnected && state.livekitRoom) {
+        const localPubs = state.livekitRoom.localParticipant.videoTrackPublications;
+        for (const [sid, pub] of localPubs) {
+          if (pub.track && (pub.source === 'camera' || pub.source === 'video')) {
+            await state.livekitRoom.localParticipant.unpublishTrack(pub.track);
+          }
+        }
+        await state.livekitRoom.localParticipant.publishTrack(newVideoTrack, { name: 'camera' });
+      }
     } catch (e) {
       console.error('Failed to switch camera:', e.message);
       alert('Could not switch to selected camera.');
@@ -2582,6 +3005,17 @@
           }
         }
       });
+
+      // Update LiveKit if connected
+      if (state.livekitConnected && state.livekitRoom) {
+        const localPubs = state.livekitRoom.localParticipant.audioTrackPublications;
+        for (const [sid, pub] of localPubs) {
+          if (pub.track) {
+            await state.livekitRoom.localParticipant.unpublishTrack(pub.track);
+          }
+        }
+        await state.livekitRoom.localParticipant.publishTrack(newAudioTrack, { name: 'microphone' });
+      }
     } catch (e) {
       console.error('Failed to switch microphone:', e.message);
       alert('Could not switch to selected microphone.');
@@ -2881,16 +3315,66 @@
   }
 
   // --- Copy Direct Invite Link ---
-  function copyInviteLink() {
-    const inviteUrl = window.location.origin + '?room=' + state.roomId;
-    navigator.clipboard.writeText(inviteUrl).then(() => {
-      dom.btnCopyInvite.textContent = 'Copied!';
-      setTimeout(() => {
-        dom.btnCopyInvite.textContent = 'Invite';
-      }, 1500);
-    }).catch(err => {
-      console.error('Failed to copy link:', err);
+  function copyToClipboard(text, btn, originalLabel) {
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(text).then(() => {
+        if (btn) { btn.textContent = 'Copied!'; setTimeout(() => { btn.textContent = originalLabel; }, 1800); }
+      }).catch(() => showLinkPrompt(text));
+    } else {
+      showLinkPrompt(text);
+    }
+  }
+
+  function showLinkPrompt(url) {
+    // Remove any existing prompt
+    const existing = document.getElementById('_link-modal-overlay');
+    if (existing) existing.remove();
+
+    const overlay = document.createElement('div');
+    overlay.id = '_link-modal-overlay';
+    overlay.className = 'modal-overlay';
+    overlay.style.cssText = 'display:flex;z-index:9999;';
+
+    const box = document.createElement('div');
+    box.className = 'modal-box';
+    box.style.maxWidth = '460px';
+    box.innerHTML = `
+      <h3 class="modal-title">Share Invite Link</h3>
+      <p style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:var(--sp-3);">Copy the link below and share it with anyone you want to invite.</p>
+      <input id="_link-prompt-input" class="input-field" value="${url}" readonly style="margin-bottom:var(--sp-4);font-size:var(--text-xs);letter-spacing:0.01em;">
+      <div class="modal-actions">
+        <button class="btn btn-ghost" id="_link-close-btn">Close</button>
+        <button class="btn btn-primary" id="_link-copy-btn">Copy Link</button>
+      </div>`;
+
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    const input = overlay.querySelector('#_link-prompt-input');
+    const copyBtn = overlay.querySelector('#_link-copy-btn');
+    const closeBtn = overlay.querySelector('#_link-close-btn');
+
+    setTimeout(() => input.select(), 40);
+
+    copyBtn.addEventListener('click', () => {
+      input.select();
+      document.execCommand('copy');
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => overlay.remove(), 900);
     });
+
+    closeBtn.addEventListener('click', () => overlay.remove());
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  }
+
+  function copyInviteLink() {
+    const inviteUrl = window.location.origin + '/?join=' + state.roomId;
+    copyToClipboard(inviteUrl, dom.btnCopyInvite, 'Invite');
+  }
+
+  function copyScheduledLink(id, btn) {
+    const url = `${location.origin}/?join=${id}`;
+    copyToClipboard(url, btn, 'Copy Link');
   }
 
   // --- Speaker View & Gallery Grid Toggling ---
@@ -2898,8 +3382,10 @@
 
   function toggleLayoutMode() {
     state.layoutMode = (state.layoutMode === 'grid') ? 'speaker' : 'grid';
-    dom.btnLayoutToggle.textContent = `Layout: ${state.layoutMode.charAt(0).toUpperCase() + state.layoutMode.slice(1)}`;
-    
+    const label = document.getElementById('layout-toggle-label');
+    if (label) label.textContent = state.layoutMode === 'speaker' ? 'Speaker' : 'Gallery';
+    dom.btnLayoutToggle.classList.toggle('active', state.layoutMode === 'speaker');
+
     if (state.layoutMode === 'speaker') {
       dom.videoGrid.classList.add('hidden');
       dom.speakerViewContainer.classList.remove('hidden');
@@ -2910,6 +3396,7 @@
       resetToGridView();
     }
   }
+
 
   function updateSpeakerViewLayout() {
     if (state.layoutMode !== 'speaker') return;
@@ -3698,11 +4185,11 @@
       });
 
       state.breakoutCsvAssignments = assignments;
-      dom.breakoutCsvStatus.textContent = `✅ Loaded ${loadedCount} assignments from CSV.`;
+      dom.breakoutCsvStatus.textContent = `Loaded ${loadedCount} assignments from CSV.`;
       dom.breakoutCsvStatus.style.color = "var(--accent-cyan)";
     };
     reader.onerror = function() {
-      dom.breakoutCsvStatus.textContent = "❌ Failed to read CSV file.";
+      dom.breakoutCsvStatus.textContent = "Failed to read CSV file.";
       dom.breakoutCsvStatus.style.color = "var(--accent-coral)";
     };
     reader.readAsText(file);
@@ -3915,6 +4402,7 @@
   window._apex = {
     joinMeeting,
     deleteScheduled,
+    copyScheduledLink,
     exportSession,
     muteParticipant,
     kickParticipant,
