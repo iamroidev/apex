@@ -2668,6 +2668,80 @@ body::before {
   textarea {
     font-size: 16px !important;
   }
+
+  /* Meeting Header Mobile Cleanup */
+  .meeting-header {
+    padding: var(--sp-2) var(--sp-3) !important;
+    height: auto !important;
+    flex-wrap: wrap;
+    gap: var(--sp-1) var(--sp-3);
+  }
+  .meeting-timer .timer-label {
+    display: none !important;
+  }
+  .meeting-info {
+    font-size: var(--text-xs);
+  }
+  .meeting-code {
+    font-size: 10px;
+    padding: 1px 4px !important;
+  }
+  .meeting-header-actions {
+    gap: var(--sp-1);
+  }
+  .meeting-header-actions button {
+    font-size: 10px !important;
+    padding: var(--sp-1) var(--sp-2.5) !important;
+    height: 28px !important;
+  }
+
+  /* Meeting Footer Control Bar Mobile Cleanup */
+  .control-bar {
+    height: auto !important;
+    padding: var(--sp-2) var(--sp-3) !important;
+    flex-direction: column !important;
+    gap: var(--sp-2) !important;
+    align-items: center !important;
+  }
+  .controls-left {
+    display: none !important; /* Hide room code on left since it is already in the header */
+  }
+  .controls-center {
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: var(--sp-1.5) !important;
+    width: 100% !important;
+  }
+  .controls-right {
+    width: 100% !important;
+    justify-content: center !important;
+    gap: var(--sp-2) !important;
+    margin-top: 2px;
+  }
+  .ctrl-btn {
+    width: 38px !important;
+    height: 38px !important;
+    padding: 0 !important;
+  }
+  .ctrl-btn svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+  .ctrl-divider {
+    display: none !important;
+  }
+  .ctrl-leave {
+    width: auto !important;
+    padding: 0 var(--sp-3) !important;
+    font-size: var(--text-xs) !important;
+    height: 38px !important;
+  }
+  #btn-layout-toggle {
+    width: auto !important;
+    padding: 0 var(--sp-3) !important;
+    font-size: var(--text-xs) !important;
+    height: 38px !important;
+  }
 }
 
 /* Center the Google Sign-in button */
