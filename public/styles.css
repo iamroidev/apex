@@ -2647,3 +2647,9 @@ body::before {
 :root:not([data-theme="light"]) .theme-toggle-btn .icon-sun {
   display: block;
 }
+
+/* Gallery Pagination */
+.video-tile.hidden-by-pagination {
+  display: none !important;
+}
+

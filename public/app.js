@@ -124,7 +124,9 @@
     presenterChromaColor: 'green',
     presenterChromaTolerance: 80,
     handRaiseQueue: [],
-    chatPermissions: 'public-private'
+    chatPermissions: 'public-private',
+    galleryPage: 0,
+    participantsSearchQuery: ''
   };
 
   // ============================================================
@@ -288,6 +290,11 @@
     modalUnmutePrompt: $('#modal-unmute-prompt'),
     btnUnmuteDecline: $('#btn-unmute-decline'),
     btnUnmuteAccept: $('#btn-unmute-accept'),
+    participantsSearch: $('#participants-search'),
+    galleryPaginationControls: $('#gallery-pagination-controls'),
+    btnGalleryPrev: $('#btn-gallery-prev'),
+    btnGalleryNext: $('#btn-gallery-next'),
+    galleryPageIndicator: $('#gallery-page-indicator'),
 
     // Chat Attachment
     chatFileInput: $('#chat-file-input'),
@@ -2024,6 +2031,12 @@
     const handBadge = dom.localTile.querySelector('.tile-hand-badge');
     if (handBadge) handBadge.remove();
 
+    state.galleryPage = 0;
+    state.participantsSearchQuery = '';
+    if (dom.participantsSearch) {
+      dom.participantsSearch.value = '';
+    }
+
     // Clear whiteboard
     clearWhiteboard(false);
 
@@ -2142,7 +2155,13 @@
       return a.displayName.localeCompare(b.displayName);
     });
 
-    // 3. Build HTML items and recipient options list
+    // 3. Filter by search query if set
+    const searchQuery = (state.participantsSearchQuery || '').toLowerCase().trim();
+    const filteredParticipants = searchQuery
+      ? allParticipants.filter(p => p.displayName.toLowerCase().includes(searchQuery))
+      : allParticipants;
+
+    // 4. Build HTML items and recipient options list
     const currentRecipient = dom.chatRecipient ? dom.chatRecipient.value : 'everyone';
     const recipientOptions = [];
 
@@ -2155,7 +2174,7 @@
       recipientOptions.push(`<option value="everyone">Everyone</option>`);
     }
 
-    const items = allParticipants.map(p => {
+    const items = filteredParticipants.map(p => {
       const qIdx = state.handRaiseQueue.findIndex(item => item.participantId === p.participantId || item.socketId === p.socketId);
       const handBadge = qIdx !== -1 ? `<span class="participant-hand" style="color: var(--accent-cyan); font-weight: bold; margin-left: var(--sp-2);">✋ ${qIdx + 1}</span>` : '';
       const localSuffix = p.isLocal ? ' (You)' : '';
@@ -2236,9 +2255,59 @@
   }
 
   function updateVideoGridCount() {
-    const tiles = dom.videoGrid.querySelectorAll('.video-tile');
-    const count = Math.min(tiles.length, 12);
+    updateVideoGridPagination();
+    const visibleTiles = dom.videoGrid.querySelectorAll('.video-tile:not(.hidden-by-pagination)');
+    const count = Math.min(visibleTiles.length, 12);
     dom.videoGrid.dataset.count = count;
+  }
+
+  function updateVideoGridPagination() {
+    const tiles = Array.from(dom.videoGrid.querySelectorAll('.video-tile'));
+    const pageSize = 12;
+    const totalTiles = tiles.length;
+    const totalPages = Math.ceil(totalTiles / pageSize);
+
+    if (state.galleryPage >= totalPages) {
+      state.galleryPage = Math.max(0, totalPages - 1);
+    }
+
+    const startIdx = state.galleryPage * pageSize;
+    const endIdx = startIdx + pageSize;
+
+    tiles.forEach((tile, index) => {
+      if (index >= startIdx && index < endIdx) {
+        tile.classList.remove('hidden-by-pagination');
+      } else {
+        tile.classList.add('hidden-by-pagination');
+      }
+    });
+
+    if (totalTiles > pageSize) {
+      if (dom.galleryPaginationControls) {
+        dom.galleryPaginationControls.classList.remove('hidden');
+        dom.galleryPageIndicator.textContent = `Page ${state.galleryPage + 1} of ${totalPages}`;
+      }
+    } else {
+      if (dom.galleryPaginationControls) {
+        dom.galleryPaginationControls.classList.add('hidden');
+      }
+    }
+  }
+
+  function changeGalleryPage(direction) {
+    const tiles = dom.videoGrid.querySelectorAll('.video-tile');
+    const pageSize = 12;
+    const totalPages = Math.ceil(tiles.length / pageSize);
+
+    state.galleryPage += direction;
+    if (state.galleryPage < 0) {
+      state.galleryPage = 0;
+    } else if (state.galleryPage >= totalPages) {
+      state.galleryPage = totalPages - 1;
+    }
+
+    updateVideoGridPagination();
+    updateVideoGridCount();
   }
 
   // ============================================================
@@ -2841,6 +2910,22 @@
         toggleMic();
       }
     });
+
+    // Participant search bar input listener
+    if (dom.participantsSearch) {
+      dom.participantsSearch.addEventListener('input', (e) => {
+        state.participantsSearchQuery = e.target.value;
+        updateParticipantsList();
+      });
+    }
+
+    // Gallery Grid Pagination buttons
+    if (dom.btnGalleryPrev) {
+      dom.btnGalleryPrev.addEventListener('click', () => changeGalleryPage(-1));
+    }
+    if (dom.btnGalleryNext) {
+      dom.btnGalleryNext.addEventListener('click', () => changeGalleryPage(1));
+    }
   }
 
   // Settings & Media Device Switching
