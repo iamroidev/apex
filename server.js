@@ -17,7 +17,7 @@ const LK_SECRET = process.env.LIVEKIT_API_SECRET || '';
 const LK_WS = process.env.LIVEKIT_WS_URL || '';
 
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+const JWT_SECRET = process.env.JWT_SECRET || 'apex_classroom_default_stable_fallback_secret_key';
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -115,6 +115,47 @@ app.post('/api/auth/login', (req, res) => {
     res.json({ id: user.id, username: user.username });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/auth/google', async (req, res) => {
+  const { credential } = req.body;
+  if (!credential) {
+    return res.status(400).json({ error: 'Credential is required' });
+  }
+  try {
+    const googleRes = await fetch(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    if (!googleRes.ok) {
+      return res.status(401).json({ error: 'Invalid Google credential' });
+    }
+    const payload = await googleRes.json();
+    const clientId = process.env.GOOGLE_CLIENT_ID || '607768078052-16lmjehbrsfsfdhka89efg0d48vr7cev.apps.googleusercontent.com';
+    if (payload.aud !== clientId) {
+      return res.status(401).json({ error: 'Invalid audience' });
+    }
+    
+    const email = payload.email;
+    const username = payload.name ? payload.name.replace(/\s+/g, '').toLowerCase() : email.split('@')[0];
+    
+    // Check if user exists in SQLite, if not create them
+    let user = db.getUserByUsername(username);
+    if (!user) {
+      const id = uuidv4().slice(0, 8);
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      try {
+        user = db.createUser(id, username, randomPassword);
+      } catch (e) {
+        const uniqueUsername = `${username}_${crypto.randomBytes(2).toString('hex')}`;
+        user = db.createUser(id, uniqueUsername, randomPassword);
+      }
+    }
+    
+    const token = generateToken(user);
+    res.setHeader('Set-Cookie', `apex_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    res.json({ id: user.id, username: user.username });
+  } catch (err) {
+    console.error('Google Auth Failed:', err);
+    res.status(500).json({ error: 'Google authentication failed' });
   }
 });
 
@@ -664,7 +705,7 @@ io.on('connection', (socket) => {
 
 // ---------- START ----------
 
-server.listen(PORT, () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`\n  ╔══════════════════════════════════════╗`);
   console.log(`  ║   Apex Classroom — Running           ║`);
   console.log(`  ║   http://localhost:${PORT}              ║`);

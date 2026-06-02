@@ -162,6 +162,8 @@ function listSessions(userId = null, limit = 50) {
 // --- Attendance helpers ---
 
 function logJoin(sessionId, participantId, displayName, role) {
+  const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
+  if (!sessionExists) return;
   getDb().prepare(
     `INSERT INTO attendance (session_id, participant_id, display_name, role) VALUES (?, ?, ?, ?)`
   ).run(sessionId, participantId, displayName, role || 'participant');
@@ -185,6 +187,8 @@ function getAttendance(sessionId) {
 // --- Chat helpers ---
 
 function saveChat(sessionId, senderId, senderName, message) {
+  const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
+  if (!sessionExists) return;
   getDb().prepare(
     `INSERT INTO chat_messages (session_id, sender_id, sender_name, message) VALUES (?, ?, ?, ?)`
   ).run(sessionId, senderId, senderName, message);
@@ -242,6 +246,8 @@ function exportSessionCSV(sessionId) {
 // --- Whiteboard helpers ---
 
 function saveWhiteboardPath(sessionId, pathData) {
+  const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
+  if (!sessionExists) return;
   getDb().prepare(
     `INSERT INTO whiteboard_paths (session_id, path_data) VALUES (?, ?)`
   ).run(sessionId, pathData);
