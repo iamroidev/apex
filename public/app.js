@@ -1737,7 +1737,9 @@
     dom.btnScreen.addEventListener('click', toggleScreenShare);
     dom.btnRecord.addEventListener('click', toggleRecording);
     dom.btnLeave.addEventListener('click', leaveMeeting);
-    dom.btnSpawnBots.addEventListener('click', spawnSandboxBots);
+    if (dom.btnSpawnBots) {
+      dom.btnSpawnBots.addEventListener('click', spawnSandboxBots);
+    }
 
     dom.btnChatToggle.addEventListener('click', () => togglePanel('chat'));
     dom.btnParticipantsToggle.addEventListener('click', () => togglePanel('participants'));
