@@ -2653,3 +2653,46 @@ body::before {
   display: none !important;
 }
 
+/* Responsive enhancements for mobile navigation & modals */
+@media (max-width: 768px) {
+  .dash-header {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--sp-3);
+    padding: var(--sp-3) var(--sp-4);
+    text-align: center;
+  }
+  
+  .dash-user {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: var(--sp-2);
+    width: 100%;
+  }
+
+  .dash-user button, 
+  .dash-user .theme-toggle-btn {
+    margin-left: 0 !important;
+  }
+
+  /* Prevent iOS zoom on focus of inputs, selects, and text fields */
+  .input-field,
+  .select-field,
+  .input-minimal,
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Center the Google Sign-in button */
+#google-signin-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  margin: var(--sp-3) 0;
+}
+
+
