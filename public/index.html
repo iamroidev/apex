@@ -532,6 +532,12 @@
               <canvas id="screen-annotation-canvas" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none;"></canvas>
             </div>
           </div>
+          <!-- Gallery Grid Pagination Controls -->
+          <div id="gallery-pagination-controls" class="gallery-pagination hidden" style="position: absolute; bottom: 84px; left: 50%; transform: translateX(-50%); z-index: 100; background: var(--bg-surface); border: 2px solid var(--border-strong); padding: var(--sp-1) var(--sp-3); display: flex; gap: var(--sp-2); align-items: center; box-shadow: var(--neo-shadow-sm);">
+            <button class="btn btn-ghost" id="btn-gallery-prev" style="padding: 2px 8px; font-size: 10px; height: 24px; border: 1px solid var(--border-strong);">◀ Prev</button>
+            <span id="gallery-page-indicator" style="font-size: 11px; font-weight: bold; color: var(--text-primary); font-family: 'Space Grotesk', sans-serif;">Page 1 of 1</span>
+            <button class="btn btn-ghost" id="btn-gallery-next" style="padding: 2px 8px; font-size: 10px; height: 24px; border: 1px solid var(--border-strong);">Next ▶</button>
+          </div>
         </div>
 
         <!-- Side panel (Chat / Participants) -->
@@ -567,6 +573,9 @@
 
           <!-- Participants tab -->
           <div class="panel-content hidden" id="tab-participants">
+            <div class="participants-search-wrapper" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; background: var(--bg-secondary);">
+              <input type="text" id="participants-search" class="input-field" placeholder="Search participants..." autocomplete="off" style="height: 32px; font-size: var(--text-xs); margin: 0; padding: 0 var(--sp-2);">
+            </div>
             <div id="waiting-queue-container" class="waiting-queue-container hidden" style="border-bottom: 1px solid var(--border-subtle); padding: var(--sp-3); background: var(--bg-secondary); flex-shrink: 0;">
               <h4 style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: var(--sp-2); display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-top: 0;">
                 <span>Waiting Room Queue</span>
