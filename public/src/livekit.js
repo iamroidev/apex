@@ -1,6 +1,6 @@
 // public/src/livekit.js — LiveKit Client SFU wrapper room connection and events
 import { state, dom, escapeHtml } from './core.js';
-import { getCSSFilter, updateVideoGridCount } from './media.js';
+import { getCSSFilter, updateVideoGridCount, addPipButtonToTile } from './media.js';
 
 export async function connectToLiveKit(wsUrl, token) {
   try {
@@ -165,4 +165,5 @@ export function createLiveKitTile(participantId, displayName) {
   tile.appendChild(avatar);
   
   dom.videoGrid.appendChild(tile);
+  addPipButtonToTile(tile);
 }

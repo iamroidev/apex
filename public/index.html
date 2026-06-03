@@ -568,6 +568,14 @@
           <div class="video-grid" id="video-grid">
             <!-- Local video tile -->
             <div class="video-tile local-tile" id="local-tile" data-participant="local">
+              <button class="tile-min-btn" id="btn-local-minimize" title="Minimize Self Video">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="4 14 10 14 10 20"></polyline>
+                  <polyline points="20 10 14 10 14 4"></polyline>
+                  <line x1="14" y1="10" x2="20" y2="4"></line>
+                  <line x1="10" y1="14" x2="4" y2="20"></line>
+                </svg>
+              </button>
               <video id="local-video" autoplay muted playsinline></video>
               <div class="tile-overlay">
                 <span class="tile-name" id="local-name-label">You</span>
@@ -606,6 +614,8 @@
             <span id="gallery-page-indicator" style="font-size: 11px; font-weight: bold; color: var(--text-primary); font-family: 'Space Grotesk', sans-serif;">Page 1 of 1</span>
             <button class="btn btn-ghost" id="btn-gallery-next" style="padding: 2px 8px; font-size: 10px; height: 24px; border: 1px solid var(--border-strong);">Next ▶</button>
           </div>
+          <!-- Closed Captions display area -->
+          <div id="captions-overlay" class="captions-overlay hidden"></div>
         </div>
 
         <!-- Side panel (Chat / Participants) -->
@@ -615,6 +625,9 @@
               <button class="panel-tab active" data-tab="chat">Chat</button>
               <button class="panel-tab" data-tab="participants">Participants</button>
             </div>
+            <button class="panel-tab" id="btn-dock-float-toggle" title="Toggle Dock/Float" style="border: 2px solid var(--border-strong); box-shadow: var(--neo-shadow-sm); padding: 2px var(--sp-2); font-size: 10px; margin-right: var(--sp-2); height: 26px; display: flex; align-items: center; justify-content: center; background: var(--bg-elevated); cursor: pointer; color: var(--text-primary); transition: all var(--dur) var(--ease);">
+              Float
+            </button>
             <button class="panel-close" id="panel-close" title="Close">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
@@ -767,11 +780,28 @@
           <button class="ctrl-btn" id="btn-hand" title="Raise Hand">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M18 11V6a2 2 0 0 0-4 0"/><path d="M14 10V4a2 2 0 0 0-4 0v7"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 0 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg>
           </button>
+          <button class="ctrl-btn" id="btn-captions-toggle" title="Toggle Closed Captions">
+            <span style="font-weight: 700; font-size: 11px; font-family: var(--font);">CC</span>
+          </button>
         </div>
         <div class="controls-right">
           <button class="ctrl-btn" id="btn-layout-toggle" title="Toggle Layout" style="width:auto;padding:0 var(--sp-3);font-size:var(--text-xs);gap:var(--sp-1);">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
             <span id="layout-toggle-label">Gallery</span>
+          </button>
+          <button class="ctrl-btn" id="btn-pip-toggle" title="Picture in Picture">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+              <rect x="13" y="11" width="7" height="5" rx="1"></rect>
+            </svg>
+          </button>
+          <button class="ctrl-btn" id="btn-fullscreen-toggle" title="Toggle Fullscreen">
+            <svg class="icon-enter-fullscreen" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+            </svg>
+            <svg class="icon-exit-fullscreen hidden" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 14h6v6m10-6h-6v6M4 10h6V4m10 6h-6V4"></path>
+            </svg>
           </button>
           <button class="ctrl-btn" id="btn-settings" title="Settings">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -836,6 +866,14 @@
       </div>
       <div id="breakout-active-view" class="hidden">
         <p style="font-size: var(--text-sm); margin-bottom: var(--sp-4); color: var(--text-secondary);">Breakout rooms are currently running. Participants have been distributed.</p>
+        <div class="modal-form-group" style="margin-bottom: var(--sp-4);">
+          <label class="modal-label" for="breakout-broadcast-input">Broadcast Message to All Rooms</label>
+          <div style="display: flex; gap: var(--sp-2);">
+            <input type="text" id="breakout-broadcast-input" class="input-field" placeholder="Type announcement..." style="height: 38px; margin: 0; padding: 0 var(--sp-3); font-size: var(--text-xs);">
+            <button class="btn btn-primary" id="breakout-broadcast-btn" style="height: 38px; padding: 0 var(--sp-4); font-size: var(--text-xs); margin: 0;">Broadcast</button>
+          </div>
+          <small id="breakout-broadcast-status" style="color: var(--accent-cyan); font-size: var(--text-xs); margin-top: var(--sp-1); display: block;"></small>
+        </div>
         <div class="modal-actions">
           <button class="btn btn-primary" id="breakout-end-btn" style="background: var(--accent-coral); border-color: var(--accent-coral); color: #fff;">End Breakouts</button>
         </div>
@@ -1078,6 +1116,9 @@
       </div>
     </div>
   </div>
+
+  <!-- Floating Announcement Toast -->
+  <div id="announcement-toast" class="announcement-toast hidden"></div>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
   <script type="module" src="/src/main.js"></script>

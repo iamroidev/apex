@@ -182,6 +182,7 @@ export function bindLanding() {
       return;
     }
     state.userName = name;
+    localStorage.setItem('apexDisplayName', name);
     joinMeeting(code);
   });
 }

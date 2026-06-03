@@ -31,6 +31,7 @@ export async function initMedia() {
     dom.localAvatar.classList.toggle('hidden', state.camEnabled);
     
     startLocalAudioAnalysis();
+    addPipButtonToTile(dom.localTile);
   } catch (err) {
     console.warn('Media access failed, running in chat-only mode:', err.message);
     // Progressive enhancement: fall back to chat + whiteboard only
@@ -394,11 +395,22 @@ export function updateSpeakerViewLayout() {
     }
   }
   if (!targetId) {
-    const firstTile = document.querySelector('.video-tile');
-    if (firstTile) {
-      targetId = firstTile.dataset.participant;
+    // Priority: 1. Remote host/cohost, 2. First remote participant, 3. Local student
+    let remoteHost = null;
+    state.peers.forEach((peer, socketId) => {
+      if (peer.info && (peer.info.role === 'host' || peer.info.role === 'cohost')) {
+        remoteHost = socketId;
+      }
+    });
+    if (remoteHost) {
+      targetId = remoteHost;
     } else {
-      targetId = 'local';
+      const firstRemote = document.querySelector('.video-tile:not(.local-tile)');
+      if (firstRemote) {
+        targetId = firstRemote.dataset.participant;
+      } else {
+        targetId = 'local';
+      }
     }
   }
 
@@ -608,5 +620,387 @@ export function updateHandIconsOnTiles() {
       }
     }
   });
+}
+
+// --- Picture-in-Picture & Fullscreen Features ---
+
+export function addPipButtonToTile(tile) {
+  if (!tile || !document.pictureInPictureEnabled) return;
+  if (tile.querySelector('.tile-pip-btn')) return;
+
+  const video = tile.querySelector('video');
+  if (!video) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'tile-pip-btn';
+  btn.title = 'Picture-in-Picture';
+  btn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+      <rect x="13" y="11" width="7" height="5" rx="1"></rect>
+    </svg>
+  `;
+
+  btn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    try {
+      if (document.pictureInPictureElement === video) {
+        await document.exitPictureInPicture();
+      } else {
+        await video.requestPictureInPicture();
+      }
+    } catch (err) {
+      console.warn('Failed to toggle Picture-in-Picture on tile video:', err);
+    }
+  });
+
+  // Listen for PiP status changes to update main control button state
+  video.addEventListener('enterpictureinpicture', () => {
+    dom.btnPipToggle.classList.add('active');
+  });
+  video.addEventListener('leavepictureinpicture', () => {
+    dom.btnPipToggle.classList.remove('active');
+  });
+
+  tile.appendChild(btn);
+}
+
+export async function toggleMainPip() {
+  if (!document.pictureInPictureEnabled) {
+    alert('Picture-in-Picture is not supported by your browser.');
+    return;
+  }
+
+  // If already in picture-in-picture, exit
+  if (document.pictureInPictureElement) {
+    try {
+      await document.exitPictureInPicture();
+    } catch (err) {
+      console.warn('Failed to exit Picture-in-Picture:', err);
+    }
+    return;
+  }
+
+  // Determine the best video element to display in PiP
+  let targetVideo = null;
+
+  // 1. Screenshare video (remote or local)
+  const screenShareTile = document.querySelector('.video-tile.screen-sharing');
+  if (screenShareTile) {
+    targetVideo = screenShareTile.querySelector('video');
+  }
+
+  // 2. Spotlighted video (if active)
+  if (!targetVideo && state.layoutMode === 'speaker') {
+    const spotlightVideo = dom.spotlightArea?.querySelector('video');
+    if (spotlightVideo) {
+      targetVideo = spotlightVideo;
+    }
+  }
+
+  // 3. Speaking participant
+  if (!targetVideo) {
+    const speakingTile = document.querySelector('.video-tile.speaking:not(.local-tile)');
+    if (speakingTile) {
+      targetVideo = speakingTile.querySelector('video');
+    }
+  }
+
+  // 4. First remote participant
+  if (!targetVideo) {
+    const remoteTile = document.querySelector('.video-tile:not(.local-tile)');
+    if (remoteTile) {
+      targetVideo = remoteTile.querySelector('video');
+    }
+  }
+
+  // 5. Local video
+  if (!targetVideo) {
+    targetVideo = dom.localVideo;
+  }
+
+  if (targetVideo) {
+    try {
+      await targetVideo.requestPictureInPicture();
+    } catch (err) {
+      console.warn('Failed to enter Picture-in-Picture:', err);
+      alert('Unable to start Picture-in-Picture. Make sure the video is active and playing.');
+    }
+  } else {
+    alert('No active video stream found to enter Picture-in-Picture mode.');
+  }
+}
+
+export function toggleFullScreen() {
+  const container = dom.viewMeeting;
+  if (!container) return;
+
+  if (!document.fullscreenElement) {
+    container.requestFullscreen().catch(err => {
+      console.error('Failed to enter Fullscreen mode:', err);
+    });
+  } else {
+    document.exitFullscreen().catch(err => {
+      console.error('Failed to exit Fullscreen mode:', err);
+    });
+  }
+}
+
+export function handleFullscreenChange() {
+  const isFullscreen = !!document.fullscreenElement;
+  dom.btnFullscreenToggle.classList.toggle('active', isFullscreen);
+  
+  const enterIcon = dom.btnFullscreenToggle.querySelector('.icon-enter-fullscreen');
+  const exitIcon = dom.btnFullscreenToggle.querySelector('.icon-exit-fullscreen');
+  
+  if (isFullscreen) {
+    enterIcon?.classList.add('hidden');
+    exitIcon?.classList.remove('hidden');
+  } else {
+    enterIcon?.classList.remove('hidden');
+    exitIcon?.classList.add('hidden');
+  }
+}
+
+export function initFullscreenAndPip() {
+  if (dom.btnPipToggle) {
+    if (!document.pictureInPictureEnabled) {
+      dom.btnPipToggle.style.display = 'none';
+    } else {
+      dom.btnPipToggle.addEventListener('click', toggleMainPip);
+    }
+  }
+
+  if (dom.btnFullscreenToggle) {
+    dom.btnFullscreenToggle.addEventListener('click', toggleFullScreen);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+  }
+
+  // Automatic PiP on tab/window visibility change
+  if (document.pictureInPictureEnabled) {
+    document.addEventListener('visibilitychange', async () => {
+      if (document.visibilityState === 'hidden') {
+        // Only enter auto-PiP if we are actively in a meeting and not already in PiP
+        if (state.view === 'meeting' && !document.pictureInPictureElement) {
+          let targetVideo = null;
+
+          // 1. Screenshare video (remote or local)
+          const screenShareTile = document.querySelector('.video-tile.screen-sharing');
+          if (screenShareTile) {
+            targetVideo = screenShareTile.querySelector('video');
+          }
+
+          // 2. Spotlighted video (if active)
+          if (!targetVideo && state.layoutMode === 'speaker') {
+            const spotlightVideo = dom.spotlightArea?.querySelector('video');
+            if (spotlightVideo) {
+              targetVideo = spotlightVideo;
+            }
+          }
+
+          // 3. Speaking participant
+          if (!targetVideo) {
+            const speakingTile = document.querySelector('.video-tile.speaking:not(.local-tile)');
+            if (speakingTile) {
+              targetVideo = speakingTile.querySelector('video');
+            }
+          }
+
+          // 4. First remote participant
+          if (!targetVideo) {
+            const remoteTile = document.querySelector('.video-tile:not(.local-tile)');
+            if (remoteTile) {
+              targetVideo = remoteTile.querySelector('video');
+            }
+          }
+
+          // 5. Local video
+          if (!targetVideo) {
+            targetVideo = dom.localVideo;
+          }
+
+          if (targetVideo && targetVideo.readyState >= 2) {
+            try {
+              await targetVideo.requestPictureInPicture();
+              state.autoPipVideo = targetVideo;
+            } catch (err) {
+              console.warn('Auto Picture-in-Picture failed:', err);
+            }
+          }
+        }
+      } else if (document.visibilityState === 'visible') {
+        // Exit PiP if it was entered automatically
+        if (document.pictureInPictureElement && state.autoPipVideo === document.pictureInPictureElement) {
+          try {
+            await document.exitPictureInPicture();
+          } catch (err) {
+            console.warn('Failed to exit auto-PiP:', err);
+          }
+          state.autoPipVideo = null;
+        }
+      }
+    });
+  }
+}
+
+// Closed Captions (Speech Recognition) Engine
+let recognition = null;
+export function initSpeechRecognition() {
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRecognition) {
+    console.warn("Speech recognition is not supported in this browser.");
+    return;
+  }
+  recognition = new SpeechRecognition();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onresult = (event) => {
+    let interimTranscript = '';
+    let finalTranscript = '';
+
+    for (let i = event.resultIndex; i < event.results.length; ++i) {
+      if (event.results[i].isFinal) {
+        finalTranscript += event.results[i][0].transcript;
+      } else {
+        interimTranscript += event.results[i][0].transcript;
+      }
+    }
+
+    const text = finalTranscript || interimTranscript;
+    const isFinal = !!finalTranscript;
+    if (text.trim() && state.captionsEnabled && state.socket) {
+      state.socket.emit('speech-transcription', {
+        roomId: state.roomId,
+        text,
+        final: isFinal
+      });
+    }
+  };
+
+  recognition.onerror = (event) => {
+    console.warn('Speech recognition error:', event.error);
+    if (event.error === 'not-allowed') {
+      state.captionsEnabled = false;
+      dom.btnCaptionsToggle?.classList.remove('active');
+    }
+  };
+
+  recognition.onend = () => {
+    if (state.captionsEnabled) {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn('Failed to restart speech recognition:', e);
+      }
+    }
+  };
+}
+
+export function toggleCaptions() {
+  state.captionsEnabled = !state.captionsEnabled;
+  dom.btnCaptionsToggle.classList.toggle('active', state.captionsEnabled);
+
+  if (state.captionsEnabled) {
+    if (!recognition) {
+      initSpeechRecognition();
+    }
+    if (recognition) {
+      try {
+        recognition.start();
+      } catch (e) {
+        console.warn('SpeechRecognition start failed or already running:', e);
+      }
+    }
+    displayCaption("System", "Closed captions enabled");
+  } else {
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch (e) {
+        console.warn('SpeechRecognition stop failed:', e);
+      }
+    }
+    dom.captionsOverlay.classList.add('hidden');
+    dom.captionsOverlay.innerHTML = '';
+  }
+}
+
+export function displayCaption(senderName, text) {
+  if (!dom.captionsOverlay) return;
+  dom.captionsOverlay.classList.remove('hidden');
+  dom.captionsOverlay.innerHTML = `<span class="caption-sender">${senderName}:</span> <span class="caption-text">${text}</span>`;
+  
+  if (window._captionTimeout) clearTimeout(window._captionTimeout);
+  window._captionTimeout = setTimeout(() => {
+    dom.captionsOverlay.classList.add('hidden');
+  }, 5000);
+}
+
+// Auto-Hiding Controls (Focus Mode) Engine
+let focusModeTimer = null;
+export function initFocusMode() {
+  const resetTimer = () => {
+    if (state.view !== 'meeting') return;
+    
+    // Show controls (remove focus-mode class)
+    dom.viewMeeting.classList.remove('focus-mode');
+    
+    if (focusModeTimer) clearTimeout(focusModeTimer);
+    
+    // Auto-hide after 4 seconds of inactivity
+    focusModeTimer = setTimeout(() => {
+      // If typing or if side panel is open, do not hide!
+      if (document.activeElement && (
+        document.activeElement.tagName === 'INPUT' || 
+        document.activeElement.tagName === 'TEXTAREA' || 
+        document.activeElement.tagName === 'SELECT'
+      )) {
+        return;
+      }
+      if (state.panelOpen) {
+        return; 
+      }
+      dom.viewMeeting.classList.add('focus-mode');
+    }, 4000);
+  };
+
+  // Interaction listeners
+  window.addEventListener('mousemove', resetTimer);
+  window.addEventListener('keydown', resetTimer);
+  window.addEventListener('click', resetTimer);
+  window.addEventListener('touchstart', resetTimer);
+}
+
+// Self Video Minimization
+export function toggleSelfMinimization() {
+  state.isLocalMinimized = !state.isLocalMinimized;
+  dom.localTile.classList.toggle('local-minimized', state.isLocalMinimized);
+  
+  const minBtn = dom.btnLocalMinimize;
+  if (minBtn) {
+    if (state.isLocalMinimized) {
+      minBtn.title = "Restore Self Video";
+      minBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 3 21 3 21 9"></polyline>
+          <polyline points="9 21 3 21 3 15"></polyline>
+          <line x1="21" y1="3" x2="14" y2="10"></line>
+          <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+      `;
+    } else {
+      minBtn.title = "Minimize Self Video";
+      minBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 14 10 14 10 20"></polyline>
+          <polyline points="20 10 14 10 14 4"></polyline>
+          <line x1="14" y1="10" x2="20" y2="4"></line>
+          <line x1="10" y1="14" x2="4" y2="20"></line>
+        </svg>
+      `;
+    }
+  }
 }
 

@@ -1,6 +1,6 @@
 // public/src/webrtc.js — fallback P2P Mesh WebRTC peer connections logic
 import { state, dom, escapeHtml } from './core.js';
-import { getCSSFilter, updateVideoGridCount } from './media.js';
+import { getCSSFilter, updateVideoGridCount, addPipButtonToTile } from './media.js';
 import { updateParticipantsList } from './main.js';
 
 const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
@@ -65,6 +65,7 @@ export function createRemoteTile(socketId, info) {
   tile.appendChild(avatar);
 
   dom.videoGrid.appendChild(tile);
+  addPipButtonToTile(tile);
 }
 
 export async function createOffer(targetSocketId) {
