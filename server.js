@@ -60,11 +60,25 @@ function verifyToken(token) {
 function getCookie(req, name) {
   const cookieHeader = req.headers.cookie || '';
   const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-    const [key, value] = cookie.split('=').map(c => c.trim());
-    if (key && value) acc[key] = value;
+    const parts = cookie.split('=');
+    const key = parts[0].trim();
+    const value = parts.slice(1).join('=').trim();
+    if (key) acc[key] = value;
     return acc;
   }, {});
   return cookies[name] || null;
+}
+
+function setSessionCookie(res, req, token, maxAge = 86400) {
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const secureFlag = isSecure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `apex_session=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}${secureFlag}`);
+}
+
+function clearSessionCookie(res, req) {
+  const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
+  const secureFlag = isSecure ? '; Secure' : '';
+  res.setHeader('Set-Cookie', `apex_session=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0${secureFlag}`);
 }
 
 function authenticate(req, res, next) {
@@ -93,7 +107,7 @@ app.post('/api/auth/register', (req, res) => {
     const id = uuidv4().slice(0, 8);
     const user = db.createUser(id, username, password);
     const token = generateToken(user);
-    res.setHeader('Set-Cookie', `apex_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    setSessionCookie(res, req, token);
     res.json({ id: user.id, username: user.username });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -111,7 +125,7 @@ app.post('/api/auth/login', (req, res) => {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
     const token = generateToken(user);
-    res.setHeader('Set-Cookie', `apex_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    setSessionCookie(res, req, token);
     res.json({ id: user.id, username: user.username });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -151,7 +165,7 @@ app.post('/api/auth/google', async (req, res) => {
     }
     
     const token = generateToken(user);
-    res.setHeader('Set-Cookie', `apex_session=${token}; Path=/; HttpOnly; SameSite=Strict; Max-Age=86400`);
+    setSessionCookie(res, req, token);
     res.json({ id: user.id, username: user.username });
   } catch (err) {
     console.error('Google Auth Failed:', err);
@@ -160,7 +174,7 @@ app.post('/api/auth/google', async (req, res) => {
 });
 
 app.post('/api/auth/logout', (req, res) => {
-  res.setHeader('Set-Cookie', 'apex_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0');
+  clearSessionCookie(res, req);
   res.json({ ok: true });
 });
 
@@ -635,9 +649,9 @@ io.on('connection', (socket) => {
   });
 
   // Slide Share & Control
-  socket.on('slide-share-start', ({ roomId, slideIndex }) => {
+  socket.on('slide-share-start', ({ roomId, slideIndex, slides }) => {
     if (!hasModPowers(roomId, socket.id)) return;
-    io.to(roomId).emit('slide-share-started', { presenterSocketId: socket.id, slideIndex });
+    io.to(roomId).emit('slide-share-started', { presenterSocketId: socket.id, slideIndex, slides });
   });
 
   socket.on('slide-share-stop', ({ roomId }) => {

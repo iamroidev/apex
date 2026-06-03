@@ -471,6 +471,51 @@
     </div>
   </div>
 
+  <!-- ========== GREEN ROOM PREVIEW MODAL ========== -->
+  <div id="modal-preview" class="modal-overlay hidden" style="z-index: 2500;">
+    <div class="modal-box" style="width: 500px; max-width: 95vw; display: flex; flex-direction: column; gap: var(--sp-4);">
+      <h3 class="modal-title" style="margin-bottom: 0;">Prepare to Join</h3>
+      
+      <!-- Video Preview Box -->
+      <div style="position: relative; width: 100%; aspect-ratio: 16/9; background: var(--bg-primary); border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; overflow: hidden; box-shadow: var(--neo-shadow-sm);">
+        <video id="preview-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+        <div id="preview-avatar" class="hidden" style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: var(--bg-elevated);">
+          <span id="preview-avatar-letter" style="width: 80px; height: 80px; border-radius: 50%; background: var(--accent-cyan-dim); border: 2px solid var(--border-strong); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: var(--accent-cyan);">P</span>
+        </div>
+        
+        <!-- Preview Controls Overlay -->
+        <div style="position: absolute; bottom: var(--sp-3); left: 50%; transform: translateX(-50%); display: flex; gap: var(--sp-3); z-index: 10;">
+          <button class="ctrl-btn" id="preview-btn-mic" title="Toggle Microphone" style="width: 40px; height: 40px; border-radius: var(--radius-sm);">
+            <svg class="icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+            <svg class="icon-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="1.5" stroke-linecap="round" style="display:none;"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.48-.35 2.17"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>
+          </button>
+          <button class="ctrl-btn" id="preview-btn-cam" title="Toggle Camera" style="width: 40px; height: 40px; border-radius: var(--radius-sm);">
+            <svg class="icon-on" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><polygon points="22,8 22,12 17,10"/></svg>
+            <svg class="icon-off" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ff5252" stroke-width="1.5" stroke-linecap="round" style="display:none;"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 17V8l-5 2"/><rect x="2" y="3" width="15" height="14" rx="2"/></svg>
+          </button>
+        </div>
+      </div>
+      
+      <!-- Device Selector Dropdowns -->
+      <div style="display: flex; flex-direction: column; gap: var(--sp-2);">
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <label class="modal-label" for="preview-select-camera" style="margin-bottom:0; font-size: 10px;">Camera</label>
+          <select id="preview-select-camera" class="select-field input-field" style="font-size: var(--text-xs); height: 32px; padding: 0 var(--sp-2);"></select>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 2px;">
+          <label class="modal-label" for="preview-select-mic" style="margin-bottom:0; font-size: 10px;">Microphone</label>
+          <select id="preview-select-mic" class="select-field input-field" style="font-size: var(--text-xs); height: 32px; padding: 0 var(--sp-2);"></select>
+        </div>
+      </div>
+      
+      <!-- Actions -->
+      <div class="modal-actions" style="margin-top: var(--sp-2);">
+        <button class="btn btn-ghost" id="preview-cancel-btn">Cancel</button>
+        <button class="btn btn-primary" id="preview-join-btn">Join Now</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ========== SESSION LOGS VIEW ========== -->
   <div id="view-logs" class="view">
     <header class="logs-header">
@@ -1035,6 +1080,6 @@
   </div>
 
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
-  <script src="/app.js"></script>
+  <script type="module" src="/src/main.js"></script>
 </body>
 </html>

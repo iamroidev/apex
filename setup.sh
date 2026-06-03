@@ -41,9 +41,10 @@ cd ~/apex
 echo "Installing NPM package dependencies..."
 npm install --omit=dev
 
-# Generate production environment variables (.env)
-echo "Configuring production environment variables (.env)..."
-cat <<EOF > ~/apex/.env
+# Generate production environment variables (.env) if not exists
+if [ ! -f ~/apex/.env ]; then
+    echo "Creating new production environment variables (.env)..."
+    cat <<EOF > ~/apex/.env
 PORT=3000
 JWT_SECRET=$(openssl rand -hex 32)
 
@@ -56,6 +57,15 @@ LIVEKIT_WS_URL=ws://${PUBLIC_IP}:7880
 GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
 GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
 EOF
+else
+    echo "Existing .env file found. Preserving config."
+    if [ ! -z "$GOOGLE_CLIENT_ID" ]; then
+        sed -i "s|^GOOGLE_CLIENT_ID=.*|GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}|g" ~/apex/.env
+    fi
+    if [ ! -z "$GOOGLE_CLIENT_SECRET" ]; then
+        sed -i "s|^GOOGLE_CLIENT_SECRET=.*|GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}|g" ~/apex/.env
+    fi
+fi
 
 # Install LiveKit Server binary
 echo "Checking and installing LiveKit Server..."

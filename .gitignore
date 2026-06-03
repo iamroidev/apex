@@ -7,3 +7,4 @@ apex-deploy.zip
 apex-key.pem
 awscliv2.zip
 *.orig
+*.bak
