@@ -4,15 +4,17 @@ export const $ = (sel) => document.querySelector(sel);
 export const $$ = (sel) => document.querySelectorAll(sel);
 
 export const state = {
-  view: 'landing',       // 'landing' | 'dashboard' | 'meeting' | 'logs'
-  user: null,            // { id, username } if logged in
+  view: 'landing',
+  user: null,
   userName: '',
   oddsellerId: '',
   participantId: '',
   roomId: null,
   sessionData: null,
   isHost: false,
-  hostKey: null,         // Host key for reclaiming host
+  hostKey: null,
+  recordingApproved: false,
+  recordingHostApproved: false,
 
   // Media
   localStream: null,
@@ -111,11 +113,9 @@ export const state = {
   hasSlideControl: false,
   controlledSocketId: null,
 
-  // Breakouts csv assignment & self-selection
   breakoutCsvAssignments: null,
   breakoutSelfSelectEnabled: false,
 
-  // New Zoom-like states
   presenterOverlayEnabled: false,
   presenterOverlayType: 'bubble',
   presenterChromaColor: 'green',
@@ -148,13 +148,10 @@ export const state = {
 };
 
 export const dom = {
-  // Views
   viewLanding: $('#view-landing'),
   viewDashboard: $('#view-dashboard'),
   viewMeeting: $('#view-meeting'),
   viewLogs: $('#view-logs'),
-
-  // Landing Page Auth & Guest Join
   formLogin: $('#form-login'),
   formRegister: $('#form-register'),
   loginUsername: $('#login-username'),
@@ -169,8 +166,6 @@ export const dom = {
   landingJoinName: $('#landing-join-name'),
   btnLandingJoin: $('#btn-landing-join'),
   landingJoinError: $('#landing-join-error'),
-
-  // Dashboard
   dashClock: $('#dash-clock'),
   dashUsernameDisplay: $('#dash-username-display'),
   btnLogout: $('#btn-logout'),
@@ -179,26 +174,18 @@ export const dom = {
   btnSchedule: $('#btn-schedule'),
   btnSessionLogs: $('#btn-session-logs'),
   upcomingList: $('#upcoming-list'),
-
-  // Join modal
   modalJoin: $('#modal-join'),
   joinCodeInput: $('#join-code-input'),
   joinCancel: $('#join-cancel'),
   joinConfirm: $('#join-confirm'),
-
-  // Schedule modal
   modalSchedule: $('#modal-schedule'),
   schedTitle: $('#sched-title'),
   schedDatetime: $('#sched-datetime'),
   schedDuration: $('#sched-duration'),
   schedCancel: $('#sched-cancel'),
   schedConfirm: $('#sched-confirm'),
-
-  // Session logs
   logsBack: $('#logs-back'),
   logsList: $('#logs-list'),
-
-  // Meeting
   meetingTitle: $('#meeting-title'),
   meetingCodeDisplay: $('#meeting-code-display'),
   meetingTimer: $('#meeting-timer'),
@@ -210,8 +197,6 @@ export const dom = {
   localSpeaking: $('#local-speaking'),
   localAvatar: $('#local-avatar'),
   btnSpawnBots: $('#btn-spawn-bots'),
-
-  // Controls
   btnMic: $('#btn-mic'),
   btnCam: $('#btn-cam'),
   btnScreen: $('#btn-screen'),
@@ -226,8 +211,6 @@ export const dom = {
   btnFullscreenToggle: $('#btn-fullscreen-toggle'),
   btnCaptionsToggle: $('#btn-captions-toggle'),
   controlRoomCode: $('#control-room-code'),
-
-  // Side panel
   sidePanel: $('#side-panel'),
   panelClose: $('#panel-close'),
   panelTabs: $$('.panel-tab'),
@@ -238,28 +221,18 @@ export const dom = {
   announcementToast: $('#announcement-toast'),
   wbOverlay: $('#wb-overlay'),
   wbClose: $('#wb-close'),
-
-  // Chat
   chatMessages: $('#chat-messages'),
   chatInput: $('#chat-input'),
   btnSendChat: $('#btn-send-chat'),
   chatBadge: $('#chat-badge'),
   chatRecipient: $('#chat-recipient'),
-
-  // Participants
   participantsList: $('#participants-list'),
-
-  // Whiteboard
   wbCanvas: $('#whiteboard-canvas'),
   wbColor: $('#wb-color'),
   wbTools: $$('.wb-tool'),
-
-  // Reactions
   reactionsLayer: $('#reactions-layer'),
   reactionsPicker: $('#reactions-picker'),
   reactionBtns: $$('.reaction-btn'),
-
-  // Layout Toggling & Invite
   btnCopyInvite: $('#btn-copy-invite'),
   btnLayoutToggle: $('#btn-layout-toggle'),
   btnAnnotateToggle: $('#btn-annotate-toggle'),
@@ -274,12 +247,8 @@ export const dom = {
   annotationWidth: $('#annotation-width'),
   btnAnnotationClear: $('#btn-annotation-clear'),
   btnAnnotationClose: $('#btn-annotation-close'),
-
-  // Breakout timer & labels
   timerLabel: $('#timer-label'),
   breakoutTimerBadge: $('#breakout-timer-badge'),
-
-  // Slides
   btnSlidesToggle: $('#btn-slides-toggle'),
   slidesOverlay: $('#slides-overlay'),
   slidesTitle: $('#slides-title'),
@@ -290,16 +259,12 @@ export const dom = {
   btnSlidesRevoke: $('#btn-slides-revoke'),
   btnSlidesClose: $('#btn-slides-close'),
   slidesContentContainer: $('#slides-content-container'),
-
-  // Breakout Advanced
   breakoutCsvFile: $('#breakout-csv-file'),
   breakoutCsvStatus: $('#breakout-csv-status'),
   breakoutSelfSelect: $('#breakout-self-select'),
   modalBreakoutParticipant: $('#modal-breakout-participant'),
   breakoutRoomsList: $('#breakout-rooms-list'),
   breakoutParticipantCloseBtn: $('#breakout-participant-close-btn'),
-
-  // New Zoom-like DOM refs
   chatPermissionsSelect: $('#chat-permissions-select'),
   settingsPresenterOverlay: $('#settings-presenter-overlay'),
   settingsOverlayType: $('#settings-overlay-type'),
@@ -318,12 +283,8 @@ export const dom = {
   dashProfileDropdown: $('#dash-profile-dropdown'),
   recBadge: $('#rec-badge'),
   btnLeaveHeader: $('#btn-leave-header'),
-
-  // Chat Attachment
   chatFileInput: $('#chat-file-input'),
   btnChatAttach: $('#btn-chat-attach'),
-
-  // Host breakout control
   btnBreakoutToggle: $('#btn-breakout-toggle'),
   modalBreakoutHost: $('#modal-breakout-host'),
   breakoutRoomsCount: $('#breakout-rooms-count'),
@@ -336,8 +297,6 @@ export const dom = {
   breakoutBroadcastInput: $('#breakout-broadcast-input'),
   breakoutBroadcastBtn: $('#breakout-broadcast-btn'),
   breakoutBroadcastStatus: $('#breakout-broadcast-status'),
-
-  // Host polling control
   btnMuteAll: $('#btn-mute-all'),
   participantsFooter: $('#participants-footer'),
   btnPollsToggle: $('#btn-polls-toggle'),
@@ -356,8 +315,6 @@ export const dom = {
   pollTallyResults: $('#poll-tally-results'),
   pollHostClose: $('#poll-host-close'),
   pollEndShareBtn: $('#poll-end-share-btn'),
-
-  // Participant polling control
   modalPollParticipant: $('#modal-poll-participant'),
   pollVoteView: $('#poll-vote-view'),
   pollVoteQuestion: $('#poll-vote-question'),
@@ -367,8 +324,6 @@ export const dom = {
   pollWaitText: $('#poll-wait-text'),
   pollParticipantResults: $('#poll-participant-results'),
   pollParticipantClose: $('#poll-participant-close'),
-
-  // Settings & Device selections
   btnSettings: $('#btn-settings'),
   modalSettings: $('#modal-settings'),
   settingsCamera: $('#settings-camera'),
@@ -377,8 +332,6 @@ export const dom = {
   settingsVideoFilter: $('#settings-video-filter'),
   settingsNoiseSuppression: $('#settings-noise-suppression'),
   btnSettingsClose: $('#btn-settings-close'),
-
-  // Waiting Room & Security Controls
   btnToggleWaitingRoom: $('#btn-toggle-waiting-room'),
   btnLockMeeting: $('#btn-lock-meeting'),
   waitingQueueContainer: $('#waiting-queue-container'),
@@ -388,12 +341,9 @@ export const dom = {
   waitingRoomMessage: $('#waiting-room-message'),
   waitingRoomMeetingTitle: $('#waiting-room-meeting-title'),
   btnCancelWaiting: $('#btn-cancel-waiting'),
-
   modalLogDetails: $('#modal-log-details'),
   logDetailsTbody: $('#log-details-tbody'),
   btnLogDetailsClose: $('#btn-log-details-close'),
-
-  // New Zoom-like meeting & whiteboard overlays DOM caches
   btnWbUndo: $('#btn-wb-undo'),
   btnWbRedo: $('#btn-wb-redo'),
   btnWbSave: $('#btn-wb-save'),
@@ -413,21 +363,12 @@ export const dom = {
   btnWbLaser: $('#btn-wb-laser'),
   btnMuteAllExceptPresenter: $('#btn-mute-all-except-presenter'),
   btnBrb: $('#btn-brb'),
-
-  // NEW: Password & Recurrence & End Meeting
-  passwordModal: $('#modal-password'),
-  passwordInput: $('#password-input'),
-  passwordSubmit: $('#password-submit'),
-  passwordCancel: $('#password-cancel'),
-  passwordError: $('#password-error'),
-  schedPassword: $('#sched-password'),
-  schedRecurrence: $('#sched-recurrence'),
-  btnEndMeetingAll: $('#btn-end-meeting-all'),
-  meetingPasswordBadge: $('#meeting-password-badge'),
+  // Recording approval + other new DOM refs
+  recordingApprovalOverlay: $('#recording-approval-overlay'),
+  recordingApprovalAccept: $('#recording-approval-accept'),
+  recordingApprovalDecline: $('#recording-approval-decline'),
   hostKeyDisplay: $('#host-key-display'),
-  analyticsSection: $('#analytics-section'),
-  analyticsContent: $('#analytics-content'),
-  meetingPasswordInput: $('#meeting-password-input')
+  meetingPasswordBadge: $('#meeting-password-badge'),
 };
 
 export function genId() {
