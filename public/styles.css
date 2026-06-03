@@ -3187,5 +3187,421 @@ body::before {
   100% { box-shadow: 4px 4px 12px var(--accent-gold); }
 }
 
+/* Presentation Participant Video Overlay (Option A + B Mix) */
+.presentation-video-strip {
+  position: absolute;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  box-shadow: var(--neo-shadow-md);
+  z-index: 1010;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.2s ease, height 0.2s ease;
+  overflow: hidden;
+}
+
+/* Docked mode styles */
+.presentation-video-strip.docked {
+  position: relative;
+  width: 100%;
+  height: 145px;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: 2px solid var(--border-strong);
+  box-shadow: none;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+}
+
+/* Floating mode styles */
+.presentation-video-strip.floating {
+  position: absolute;
+  top: 80px;
+  right: 20px;
+  width: 320px;
+  max-width: 90vw;
+  height: 240px;
+  max-height: 80vh;
+  border: 2px solid var(--border-strong);
+  resize: both;
+  overflow: hidden;
+}
+
+.strip-header {
+  height: 28px;
+  background: var(--bg-primary);
+  border-bottom: 2px solid var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--sp-2);
+  cursor: default;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.presentation-video-strip.floating .strip-header {
+  cursor: move;
+}
+
+.drag-handle-bar {
+  font-size: 10px;
+  font-weight: bold;
+  color: var(--text-secondary);
+}
+
+.strip-tiles {
+  flex: 1;
+  overflow: auto;
+  display: flex;
+  gap: var(--sp-2);
+  padding: var(--sp-2);
+  background: var(--bg-primary);
+}
+
+/* Scrollbar styling for tiles strip */
+.strip-tiles::-webkit-scrollbar {
+  height: 6px;
+  width: 6px;
+}
+.strip-tiles::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+.strip-tiles::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+}
+
+/* Video tiles layout inside docked strip */
+.presentation-video-strip.docked .strip-tiles {
+  flex-direction: row;
+  overflow-x: auto;
+  overflow-y: hidden;
+  align-items: center;
+}
+
+.presentation-video-strip.docked .video-tile {
+  width: 160px;
+  height: 110px;
+  flex-shrink: 0;
+}
+
+/* Video tiles layout inside floating strip */
+.presentation-video-strip.floating .strip-tiles {
+  flex-direction: column;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.presentation-video-strip.floating .video-tile {
+  width: 100%;
+  height: 150px;
+  flex-shrink: 0;
+}
+
+/* Tile Status Indicators */
+.tile-status-indicators {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 12;
+}
+
+.tile-status-icon {
+  background: var(--bg-surface);
+  color: var(--accent-coral);
+  border: 2px solid var(--border-strong);
+  box-shadow: 1px 1px 0px #000000;
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+}
+
+.tile-status-icon svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* Pin Video Hover Button */
+.tile-pin-btn {
+  position: absolute;
+  top: var(--sp-2);
+  left: calc(var(--sp-2) + 34px);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+  box-shadow: var(--neo-shadow-sm);
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+
+.video-tile:hover .tile-pin-btn,
+.video-tile.pinned .tile-pin-btn {
+  opacity: 1;
+}
+
+.video-tile.pinned .tile-pin-btn {
+  color: var(--text-inverse);
+  background: var(--accent-cyan);
+}
+
+.tile-pin-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.9);
+}
+
+.video-tile.pinned .tile-pin-btn:hover {
+  background: var(--accent-cyan);
+  color: var(--text-inverse);
+}
+
+.tile-pin-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Hand Raise Toast */
+.hand-raise-toast {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translate(-50%, -100px);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 2px solid var(--border-strong);
+  padding: var(--sp-2) var(--sp-4);
+  box-shadow: var(--neo-shadow-md);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+.hand-raise-toast.visible {
+  transform: translate(-50%, 0);
+}
+
+/* Chat Search Filter */
+.chat-msg.hidden-by-search {
+  display: none !important;
+}
+
+/* 13+ Meeting UX Refinements Styling */
+
+/* Hide Self-View */
+#local-tile.self-view-hidden {
+  display: none !important;
+}
+
+/* Hide Non-Video Participants */
+.hide-non-video-active .video-tile.non-video-participant:not(.pinned) {
+  display: none !important;
+}
+
+/* Meeting Mic Meter (Vertical level bar inside mic button) */
+.meeting-mic-meter {
+  position: absolute;
+  right: 5px;
+  bottom: 6px;
+  top: 6px;
+  width: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  overflow: hidden;
+  pointer-events: none;
+  border-radius: 1px;
+}
+.meeting-mic-meter-fill {
+  width: 100%;
+  height: 0%;
+  background: var(--accent-green, #39ff14);
+  transition: height 0.05s ease;
+  position: absolute;
+  bottom: 0;
+}
+
+/* Tile Individual Volume Slider */
+.tile-volume-container {
+  position: absolute;
+  top: var(--sp-2);
+  right: var(--sp-2);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  padding: 2px var(--sp-2);
+  box-shadow: var(--neo-shadow-sm);
+  z-index: 10;
+  opacity: 0;
+  pointer-events: auto;
+  transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease);
+  height: 28px;
+}
+.video-tile:hover .tile-volume-container {
+  opacity: 1;
+}
+.tile-volume-slider {
+  width: 60px;
+  height: 6px;
+  cursor: pointer;
+  accent-color: var(--accent-cyan);
+}
+
+/* BRB stopwatch overlay */
+.tile-brb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 5, 8, 0.85);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 8;
+  color: var(--text-primary);
+  font-family: var(--font);
+  pointer-events: none;
+}
+.brb-card {
+  background: #fbf719; /* neobrutalist yellow */
+  color: #000 !important;
+  border: 3px solid #000;
+  padding: var(--sp-2) var(--sp-4);
+  box-shadow: 4px 4px 0px #000;
+  text-align: center;
+  transform: rotate(-1deg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 110px;
+}
+.brb-text {
+  font-weight: 800;
+  font-size: var(--text-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 2px;
+}
+.brb-timer {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: var(--text-xs);
+}
+
+/* Persistent Role Badges */
+.tile-role-badge {
+  position: absolute;
+  bottom: calc(var(--sp-2) + 20px);
+  right: var(--sp-2);
+  padding: 1px var(--sp-1);
+  font-size: 8px;
+  font-weight: 700;
+  border: 1.5px solid #000;
+  border-radius: 1px;
+  text-transform: uppercase;
+  z-index: 5;
+  letter-spacing: 0.02em;
+  box-shadow: 1px 1px 0px #000;
+}
+.tile-role-badge.role-host {
+  background: var(--accent-yellow, #fbf719);
+  color: #000;
+}
+.tile-role-badge.role-cohost {
+  background: #b983ff;
+  color: #fff;
+}
+.tile-role-badge.role-presenter {
+  background: var(--accent-cyan, #00f2fe);
+  color: #000;
+}
+
+/* Viewer-Side Screenshare/Slides Zoom & Pan */
+.zoomable-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+}
+.zoomable-container:active {
+  cursor: grabbing;
+}
+.zoomable-element {
+  transform-origin: 0 0;
+  transition: transform 0.05s ease-out;
+  width: 100%;
+  height: 100%;
+}
+
+/* Chat Copy Button styling */
+.chat-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 4px;
+  cursor: pointer;
+  z-index: 5;
+  transition: all 0.15s ease;
+  box-shadow: 1px 1px 0px #000;
+}
+.chat-copy-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.chat-copy-btn:active {
+  transform: translate(0.5px, 0.5px);
+  box-shadow: none;
+}
+
+/* Talking while muted warning toast */
+.talking-muted-toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translate(-50%, 150px);
+  background: var(--accent-coral, #ff5252);
+  color: #fff;
+  border: 2px solid #000;
+  padding: var(--sp-2) var(--sp-4);
+  box-shadow: var(--neo-shadow-md);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-weight: 700;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+.talking-muted-toast.visible {
+  transform: translate(-50%, 0);
+}
+
+
 
 

@@ -21,6 +21,7 @@ export async function initMedia() {
     state.localStream = initNoiseSuppression(rawStream);
     dom.localVideo.srcObject = state.localStream;
     dom.localVideo.style.filter = getCSSFilter(state.videoFilter);
+    dom.localVideo.style.transform = state.mirrorLocalVideo ? 'scaleX(-1)' : 'none';
     
     // Apply initial mute/hidden state from preview green room
     state.localStream.getAudioTracks().forEach(t => t.enabled = state.micEnabled);
@@ -44,28 +45,104 @@ export async function initMedia() {
   }
 }
 
+export function showMutedSpeechToast() {
+  if (document.querySelector('.talking-muted-toast')) return;
+
+  const toast = document.createElement('div');
+  toast.className = 'talking-muted-toast';
+  toast.innerHTML = `
+    <span style="font-size: 16px; margin-right: 8px;">🎙️</span>
+    <span>You are speaking, but your microphone is muted.</span>
+  `;
+  document.body.appendChild(toast);
+
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(320, audioCtx.currentTime);
+    osc.frequency.setValueAtTime(480, audioCtx.currentTime + 0.1);
+    gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.25);
+  } catch (e) {}
+
+  setTimeout(() => {
+    toast.classList.add('visible');
+  }, 20);
+
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
 export function startLocalAudioAnalysis() {
   if (!state.localStream) return;
   const audioTracks = state.localStream.getAudioTracks();
   if (!audioTracks.length) return;
 
-  const ctx = new AudioContext();
-  const source = ctx.createMediaStreamSource(state.localStream);
-  const analyser = ctx.createAnalyser();
-  analyser.fftSize = 256;
-  source.connect(analyser);
-  const data = new Uint8Array(analyser.frequencyBinCount);
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    // Clone the local mic track so it stays enabled for local analysis even when state.localStream audio is muted
+    const analysisTrack = audioTracks[0].clone();
+    analysisTrack.enabled = true;
+    
+    const analysisStream = new MediaStream([analysisTrack]);
+    const source = ctx.createMediaStreamSource(analysisStream);
+    const analyser = ctx.createAnalyser();
+    analyser.fftSize = 256;
+    source.connect(analyser);
+    const data = new Uint8Array(analyser.frequencyBinCount);
 
-  function check() {
-    analyser.getByteFrequencyData(data);
-    let sum = 0;
-    for (let i = 0; i < data.length; i++) sum += data[i];
-    const avg = sum / data.length;
-    const speaking = avg > 15 && state.micEnabled;
-    dom.localTile.classList.toggle('speaking', speaking);
-    requestAnimationFrame(check);
+    let talkingMutedFrames = 0;
+    let lastMutedAlertTime = 0;
+
+    function check() {
+      if (!analysisTrack || analysisTrack.readyState === 'ended') return;
+
+      analyser.getByteFrequencyData(data);
+      let sum = 0;
+      for (let i = 0; i < data.length; i++) sum += data[i];
+      const avg = sum / data.length;
+
+      // Local speaking indicator (only if unmuted)
+      const speaking = avg > 15 && state.micEnabled;
+      dom.localTile.classList.toggle('speaking', speaking);
+
+      // Meeting controls mic level meter (pulses even when muted to verify hardware)
+      const fill = document.getElementById('meeting-mic-meter-fill');
+      if (fill) {
+        // Map average (0-150 typical) to percentage height (0-100%)
+        const percent = Math.min(100, Math.max(0, (avg / 80) * 100));
+        fill.style.height = `${percent}%`;
+      }
+
+      // Talking while muted warning detection
+      if (!state.micEnabled && avg > 18) {
+        talkingMutedFrames++;
+        // If speaking continuously for ~1 second (assuming ~60fps requestAnimationFrame, so 60 frames)
+        if (talkingMutedFrames > 60) {
+          const now = Date.now();
+          if (now - lastMutedAlertTime > 12000) { // Throttle warning to every 12 seconds
+            showMutedSpeechToast();
+            lastMutedAlertTime = now;
+          }
+        }
+      } else {
+        talkingMutedFrames = 0;
+      }
+
+      requestAnimationFrame(check);
+    }
+    check();
+  } catch (err) {
+    console.warn('Failed to start local audio analysis:', err);
   }
-  check();
 }
 
 export function toggleMic() {
@@ -396,29 +473,22 @@ export function updateSpeakerViewLayout() {
     }
   }
 
-  // 3. Active speaker priority
+  // 3. Host / Moderator Priority (if present)
   if (!targetId) {
-    const speakingTile = document.querySelector('.video-tile.speaking:not(.local-tile)');
-    if (speakingTile) {
-      targetId = speakingTile.dataset.participant;
-    } else if (dom.localTile.classList.contains('speaking')) {
-      targetId = 'local';
-    }
-  }
+    let remoteHost = null;
+    state.peers.forEach((peer) => {
+      if (peer.info && (peer.info.role === 'host' || peer.info.role === 'cohost')) {
+        remoteHost = peer.info.participantId;
+      }
+    });
 
-  // 4. Role/Default priorities
-  if (!targetId) {
-    if (state.isHost || state.role === 'cohost') {
-      targetId = 'local';
-    } else {
-      let remoteHost = null;
-      state.peers.forEach((peer) => {
-        if (peer.info && (peer.info.role === 'host' || peer.info.role === 'cohost')) {
-          remoteHost = peer.info.participantId;
-        }
-      });
-      if (remoteHost) {
-        targetId = remoteHost;
+    if (remoteHost) {
+      targetId = remoteHost;
+    } else if (state.isHost || state.role === 'cohost') {
+      // Local user is host, and no remote host is present.
+      // Spotlight the active remote student speaker if one is talking, otherwise first remote
+      if (state.activeSpeakerId && state.activeSpeakerId !== state.participantId) {
+        targetId = state.activeSpeakerId;
       } else {
         const firstRemote = document.querySelector('.video-tile:not(.local-tile)');
         if (firstRemote) {
@@ -427,6 +497,34 @@ export function updateSpeakerViewLayout() {
           targetId = 'local';
         }
       }
+    }
+  }
+
+  // 4. Active speaker priority (fallback when no host/cohost is remote)
+  if (!targetId) {
+    if (state.activeSpeakerId) {
+      if (state.activeSpeakerId === state.participantId) {
+        targetId = 'local';
+      } else {
+        targetId = state.activeSpeakerId;
+      }
+    } else {
+      const speakingTile = document.querySelector('.video-tile.speaking:not(.local-tile)');
+      if (speakingTile) {
+        targetId = speakingTile.dataset.participant;
+      } else if (dom.localTile.classList.contains('speaking')) {
+        targetId = 'local';
+      }
+    }
+  }
+
+  // 5. Default Fallback
+  if (!targetId) {
+    const firstRemote = document.querySelector('.video-tile:not(.local-tile)');
+    if (firstRemote) {
+      targetId = firstRemote.dataset.participant;
+    } else {
+      targetId = 'local';
     }
   }
 
@@ -1027,5 +1125,546 @@ export function toggleSelfMinimization() {
       `;
     }
   }
+}
+
+// Audio Input Level Meter in Green Room
+let previewAudioContext = null;
+let previewAnalyser = null;
+let previewMicrophone = null;
+let previewMeterInterval = null;
+
+export function initGreenRoomMicMeter(stream) {
+  if (previewMeterInterval) {
+    clearInterval(previewMeterInterval);
+    previewMeterInterval = null;
+  }
+  if (previewAudioContext) {
+    previewAudioContext.close().catch(e => {});
+    previewAudioContext = null;
+  }
+
+  const audioTracks = stream.getAudioTracks();
+  if (!audioTracks.length) {
+    resetGreenRoomMicMeter();
+    return;
+  }
+
+  try {
+    previewAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+    previewAnalyser = previewAudioContext.createAnalyser();
+    previewAnalyser.fftSize = 256;
+    previewMicrophone = previewAudioContext.createMediaStreamSource(stream);
+    previewMicrophone.connect(previewAnalyser);
+
+    const dataArray = new Uint8Array(previewAnalyser.frequencyBinCount);
+
+    previewMeterInterval = setInterval(() => {
+      if (!state.micEnabled) {
+        resetGreenRoomMicMeter();
+        return;
+      }
+      previewAnalyser.getByteFrequencyData(dataArray);
+      let sum = 0;
+      for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
+      }
+      const average = sum / dataArray.length;
+
+      const maxBars = 10;
+      const activeBars = Math.min(maxBars, Math.round(average / 6));
+
+      const bars = document.querySelectorAll('#mic-level-meter .meter-bar');
+      bars.forEach((bar, idx) => {
+        if (idx < activeBars) {
+          if (idx < 6) {
+            bar.style.backgroundColor = 'var(--accent-green)';
+          } else if (idx < 8) {
+            bar.style.backgroundColor = 'var(--accent-gold)';
+          } else {
+            bar.style.backgroundColor = 'var(--accent-coral)';
+          }
+        } else {
+          bar.style.backgroundColor = 'transparent';
+        }
+      });
+    }, 80);
+  } catch (e) {
+    console.warn('Failed to initialize green room mic meter:', e);
+    resetGreenRoomMicMeter();
+  }
+}
+
+export function resetGreenRoomMicMeter() {
+  const bars = document.querySelectorAll('#mic-level-meter .meter-bar');
+  bars.forEach(bar => {
+    bar.style.backgroundColor = 'transparent';
+  });
+}
+
+export function clearGreenRoomMicMeter() {
+  if (previewMeterInterval) {
+    clearInterval(previewMeterInterval);
+    previewMeterInterval = null;
+  }
+  if (previewAudioContext) {
+    previewAudioContext.close().catch(e => {});
+    previewAudioContext = null;
+  }
+  resetGreenRoomMicMeter();
+}
+
+// Low-Bandwidth Mode
+export function toggleDisableIncomingVideo() {
+  state.disableIncomingVideo = dom.settingsIncomingVideo ? dom.settingsIncomingVideo.checked : false;
+
+  const remoteTiles = document.querySelectorAll('.video-tile:not(.local-tile)');
+  remoteTiles.forEach(tile => {
+    const video = tile.querySelector('video');
+    const avatar = tile.querySelector('.tile-avatar');
+
+    if (state.disableIncomingVideo) {
+      if (video) {
+        video.classList.add('hidden');
+        if (state.livekitConnected && state.livekitRoom) {
+          const partId = tile.dataset.participant;
+          const participant = state.livekitRoom.remoteParticipants.get(partId);
+          if (participant) {
+            participant.trackPublications.forEach(pub => {
+              if (pub.track && pub.kind === 'video') {
+                pub.setEnabled(false);
+              }
+            });
+          }
+        }
+      }
+      if (avatar) avatar.classList.remove('hidden');
+    } else {
+      if (video) {
+        video.classList.remove('hidden');
+        if (state.livekitConnected && state.livekitRoom) {
+          const partId = tile.dataset.participant;
+          const participant = state.livekitRoom.remoteParticipants.get(partId);
+          if (participant) {
+            participant.trackPublications.forEach(pub => {
+              if (pub.track && pub.kind === 'video') {
+                pub.setEnabled(true);
+                pub.track.attach(video);
+              }
+            });
+          }
+        }
+      }
+      if (avatar && video && (video.srcObject || video.src)) {
+        avatar.classList.add('hidden');
+      }
+    }
+  });
+}
+
+// Tile status indicators (mic/cam icons)
+export function updateAllTileStatusIndicators() {
+  updateTileStatus('local', state.micEnabled, state.camEnabled);
+
+  state.peers.forEach((peer) => {
+    let mic = false;
+    let cam = false;
+    if (peer.stream) {
+      const audioTracks = peer.stream.getAudioTracks();
+      if (audioTracks.length && audioTracks[0].enabled) mic = true;
+      const videoTracks = peer.stream.getVideoTracks();
+      if (videoTracks.length && videoTracks[0].enabled) cam = true;
+    }
+    updateTileStatus(peer.info.participantId, mic, cam);
+  });
+
+  if (state.livekitConnected && state.livekitRoom) {
+    state.livekitRoom.remoteParticipants.forEach((participant) => {
+      let mic = false;
+      let cam = false;
+      const audioPub = Array.from(participant.audioTrackPublications.values()).find(pub => pub.source === 'microphone');
+      if (audioPub && audioPub.isSubscribed && audioPub.track && audioPub.track.isEnabled) mic = true;
+      const videoPub = Array.from(participant.videoTrackPublications.values()).find(pub => pub.source === 'camera' || pub.source === 'video');
+      if (videoPub && videoPub.isSubscribed && videoPub.track && videoPub.track.isEnabled) cam = true;
+
+      updateTileStatus(participant.identity, mic, cam);
+    });
+  }
+
+  state.bots.forEach(bot => {
+    updateTileStatus(bot.id, !bot.muted, true);
+  });
+}
+
+export function getParticipantRole(id) {
+  if (id === 'local') {
+    return state.isHost ? 'host' : (state.role || 'participant');
+  }
+  const slidePresenterId = state.slidePresenterSocketId;
+  let isPresenter = false;
+  if (slidePresenterId) {
+    if (slidePresenterId === id) isPresenter = true;
+    const peer = state.peers.get(slidePresenterId);
+    if (peer && peer.info && peer.info.participantId === id) isPresenter = true;
+  }
+  for (const [socketId, peer] of state.peers.entries()) {
+    if (peer.info && (peer.info.participantId === id || socketId === id)) {
+      if (isPresenter) return 'presenter';
+      return peer.info.role || 'participant';
+    }
+  }
+  if (isPresenter) return 'presenter';
+  return 'participant';
+}
+
+export function setTileVolume(tile, volume) {
+  const audios = tile.querySelectorAll('audio, video');
+  audios.forEach(el => {
+    el.volume = volume;
+  });
+}
+
+export function addVolumeSliderToTile(tile) {
+  if (!tile) return;
+  if (tile.dataset.participant === 'local' || tile === dom.localTile) return;
+  if (tile.querySelector('.tile-volume-container')) return;
+
+  const container = document.createElement('div');
+  container.className = 'tile-volume-container';
+  container.title = 'Adjust Volume';
+  
+  const icon = document.createElement('span');
+  icon.style.fontSize = '10px';
+  icon.style.fontWeight = 'bold';
+  icon.textContent = '🔊';
+
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = '0';
+  slider.max = '1';
+  slider.step = '0.05';
+  
+  const partId = tile.dataset.participant;
+  const savedVol = (state.individualVolumes && state.individualVolumes[partId] !== undefined)
+    ? state.individualVolumes[partId]
+    : 1.0;
+  slider.value = savedVol;
+
+  slider.className = 'tile-volume-slider';
+  
+  slider.addEventListener('input', (e) => {
+    const vol = parseFloat(e.target.value);
+    if (!state.individualVolumes) state.individualVolumes = {};
+    state.individualVolumes[partId] = vol;
+    setTileVolume(tile, vol);
+  });
+
+  container.appendChild(icon);
+  container.appendChild(slider);
+  tile.appendChild(container);
+}
+
+// Global BRB Status stopwatch updater
+if (typeof window !== 'undefined') {
+  setInterval(() => {
+    if (!state.brbStates) state.brbStates = {};
+    document.querySelectorAll('.video-tile').forEach(tile => {
+      const partId = tile.dataset.participant;
+      if (!partId) return;
+      const brbTime = state.brbStates[partId];
+      if (brbTime) {
+        let overlay = tile.querySelector('.tile-brb-overlay');
+        if (!overlay) {
+          overlay = document.createElement('div');
+          overlay.className = 'tile-brb-overlay';
+          overlay.innerHTML = `
+            <div class="brb-card">
+              <div class="brb-text">☕ Away (BRB)</div>
+              <div class="brb-timer">00:00</div>
+            </div>
+          `;
+          tile.appendChild(overlay);
+        }
+        const elapsedSecs = Math.floor((Date.now() - brbTime) / 1000);
+        const minutes = String(Math.floor(elapsedSecs / 60)).padStart(2, '0');
+        const seconds = String(elapsedSecs % 60).padStart(2, '0');
+        const timerEl = overlay.querySelector('.brb-timer');
+        if (timerEl) timerEl.textContent = `${minutes}:${seconds}`;
+      } else {
+        const overlay = tile.querySelector('.tile-brb-overlay');
+        if (overlay) overlay.remove();
+      }
+    });
+  }, 1000);
+}
+
+export function updateTileStatus(id, micEnabled, camEnabled) {
+  const tile = id === 'local' ? dom.localTile : document.querySelector(`.video-tile[data-participant="${id}"]`);
+  if (!tile) return;
+
+  // Toggle non-video class
+  tile.classList.toggle('non-video-participant', !camEnabled);
+
+  let indicators = tile.querySelector('.tile-status-indicators');
+  if (!indicators) {
+    indicators = document.createElement('div');
+    indicators.className = 'tile-status-indicators';
+    tile.appendChild(indicators);
+  }
+
+  indicators.innerHTML = `
+    ${!micEnabled ? `
+      <span class="tile-status-icon mic-muted" title="Microphone Muted">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.48-.35 2.17"/></svg>
+      </span>` : ''}
+    ${!camEnabled ? `
+      <span class="tile-status-icon cam-off" title="Camera Off">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="1" y1="1" x2="23" y2="23"/><path d="M21 17V8l-5 2"/><rect x="2" y="3" width="15" height="14" rx="2"/></svg>
+      </span>` : ''}
+  `;
+
+  // Persistent Role Badge
+  let badge = tile.querySelector('.tile-role-badge');
+  const role = getParticipantRole(id);
+  if (role && role !== 'participant' && role !== 'simulated') {
+    if (!badge) {
+      badge = document.createElement('span');
+      badge.className = 'tile-role-badge';
+      tile.appendChild(badge);
+    }
+    badge.className = `tile-role-badge role-${role}`;
+    badge.textContent = role;
+  } else {
+    if (badge) badge.remove();
+  }
+
+  // Ensure volume slider is attached (if remote)
+  if (id !== 'local') {
+    addVolumeSliderToTile(tile);
+    const savedVol = (state.individualVolumes && state.individualVolumes[id] !== undefined)
+      ? state.individualVolumes[id]
+      : 1.0;
+    setTileVolume(tile, savedVol);
+  }
+}
+
+// Hover Pinning Shortcut
+export function addPinButtonToTile(tile) {
+  if (!tile) return;
+  if (tile.querySelector('.tile-pin-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.className = 'tile-pin-btn';
+  btn.title = 'Pin Video';
+  btn.innerHTML = `
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+      <circle cx="12" cy="10" r="3"></circle>
+    </svg>
+  `;
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const participantId = tile.dataset.participant;
+    togglePinParticipant(participantId);
+  });
+
+  tile.appendChild(btn);
+}
+
+export function togglePinParticipant(participantId) {
+  if (state.pinnedParticipantId === participantId) {
+    state.pinnedParticipantId = null;
+  } else {
+    state.pinnedParticipantId = participantId;
+  }
+
+  updatePinIcons();
+
+  if (state.layoutMode === 'speaker') {
+    updateSpeakerViewLayout();
+  }
+}
+
+export function updatePinIcons() {
+  const tiles = document.querySelectorAll('.video-tile');
+  tiles.forEach(tile => {
+    const partId = tile.dataset.participant;
+    const isPinned = state.pinnedParticipantId === partId;
+    tile.classList.toggle('pinned', isPinned);
+  });
+}
+
+// Draggable/dockable presentation video strip orchestration
+export function appendTileToCorrectGridOrStrip(tile) {
+  const isWbOpen = !dom.wbOverlay.classList.contains('hidden');
+  const isSlidesOpen = !dom.slidesOverlay.classList.contains('hidden');
+
+  if (isWbOpen) {
+    const wbStrip = document.getElementById('wb-strip-tiles');
+    if (wbStrip) wbStrip.appendChild(tile);
+  } else if (isSlidesOpen) {
+    const slidesStrip = document.getElementById('slides-strip-tiles');
+    if (slidesStrip) slidesStrip.appendChild(tile);
+  } else {
+    if (state.layoutMode === 'speaker') {
+      dom.speakerThumbnails.appendChild(tile);
+    } else {
+      dom.videoGrid.appendChild(tile);
+    }
+  }
+
+  addPinButtonToTile(tile);
+  updateAllTileStatusIndicators();
+}
+
+export function syncPresentationVideoStrip() {
+  const isWbOpen = !dom.wbOverlay.classList.contains('hidden');
+  const isSlidesOpen = !dom.slidesOverlay.classList.contains('hidden');
+
+  let targetStripTiles = null;
+  if (isWbOpen) {
+    targetStripTiles = document.getElementById('wb-strip-tiles');
+  } else if (isSlidesOpen) {
+    targetStripTiles = document.getElementById('slides-strip-tiles');
+  }
+
+  if (targetStripTiles) {
+    const tiles = document.querySelectorAll('.video-tile');
+    tiles.forEach(tile => {
+      targetStripTiles.appendChild(tile);
+      const video = tile.querySelector('video');
+      if (video && video.paused) video.play().catch(e => {});
+    });
+  } else {
+    if (state.layoutMode === 'speaker') {
+      updateSpeakerViewLayout();
+    } else {
+      resetToGridView();
+    }
+  }
+}
+
+export function makeStripDraggable(stripId) {
+  const strip = document.getElementById(stripId);
+  if (!strip) return;
+
+  const header = strip.querySelector('.strip-header');
+  if (!header) return;
+
+  let isDragging = false;
+  let startX = 0, startY = 0;
+  let initialLeft = 0, initialTop = 0;
+
+  header.addEventListener('pointerdown', (e) => {
+    if (!strip.classList.contains('floating')) return;
+    if (e.target.closest('button')) return;
+
+    isDragging = true;
+    startX = e.clientX;
+    startY = e.clientY;
+
+    const rect = strip.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+
+    header.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  });
+
+  header.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    let newLeft = initialLeft + dx;
+    let newTop = initialTop + dy;
+
+    const maxLeft = window.innerWidth - strip.offsetWidth;
+    const maxTop = window.innerHeight - strip.offsetHeight;
+
+    newLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    newTop = Math.max(0, Math.min(newTop, maxTop));
+
+    strip.style.left = `${newLeft}px`;
+    strip.style.top = `${newTop}px`;
+    strip.style.right = 'auto';
+  });
+
+  header.addEventListener('pointerup', (e) => {
+    if (isDragging) {
+      isDragging = false;
+      header.releasePointerCapture(e.pointerId);
+    }
+  });
+}
+
+export function setupStripToggle(stripId, btnId) {
+  const strip = document.getElementById(stripId);
+  const btn = document.getElementById(btnId);
+  if (!strip || !btn) return;
+
+  strip.classList.add('docked');
+
+  btn.addEventListener('click', () => {
+    const isDocked = strip.classList.contains('docked');
+    if (isDocked) {
+      strip.classList.remove('docked');
+      strip.classList.add('floating');
+      btn.textContent = 'Dock';
+
+      strip.style.top = '100px';
+      strip.style.right = '20px';
+      strip.style.left = 'auto';
+      strip.style.width = '320px';
+      strip.style.height = '240px';
+    } else {
+      strip.classList.remove('floating');
+      strip.classList.add('docked');
+      btn.textContent = 'Float';
+
+      strip.style.top = '';
+      strip.style.right = '';
+      strip.style.left = '';
+      strip.style.width = '';
+      strip.style.height = '';
+    }
+  });
+}
+
+export function toggleHideSelfView() {
+  state.hideSelfView = dom.settingsHideSelf ? dom.settingsHideSelf.checked : false;
+  if (dom.localTile) {
+    dom.localTile.classList.toggle('self-view-hidden', state.hideSelfView);
+  }
+  localStorage.setItem('apex_hideSelfView', state.hideSelfView);
+}
+
+export function toggleHideNonVideoParticipants() {
+  state.hideNonVideo = dom.settingsHideNonVideo ? dom.settingsHideNonVideo.checked : false;
+  const grid = dom.videoGrid;
+  if (grid) {
+    grid.classList.toggle('hide-non-video-active', state.hideNonVideo);
+  }
+  const speakerThumbnails = dom.speakerThumbnails;
+  if (speakerThumbnails) {
+    speakerThumbnails.classList.toggle('hide-non-video-active', state.hideNonVideo);
+  }
+  localStorage.setItem('apex_hideNonVideo', state.hideNonVideo);
+}
+
+export function toggleMirrorLocalVideo() {
+  state.mirrorLocalVideo = dom.settingsMirrorLocal ? dom.settingsMirrorLocal.checked : false;
+  if (dom.localVideo) {
+    dom.localVideo.style.transform = state.mirrorLocalVideo ? 'scaleX(-1)' : 'none';
+  }
+  localStorage.setItem('apex_mirrorLocalVideo', state.mirrorLocalVideo);
+}
+
+export function initPresentationVideoStrips() {
+  makeStripDraggable('wb-video-strip');
+  makeStripDraggable('slides-video-strip');
+  setupStripToggle('wb-video-strip', 'btn-wb-strip-dock');
+  setupStripToggle('slides-video-strip', 'btn-slides-strip-dock');
 }
 
