@@ -564,9 +564,24 @@ export function toggleWhiteboard() {
     dom.wbOverlay.classList.remove('hidden');
     dom.btnWhiteboardToggle.classList.add('active');
     resizeWhiteboard();
+    // Force video grid visibility when returning from whiteboard
+    if (dom.videoGrid) dom.videoGrid.style.display = '';
   } else {
     dom.wbOverlay.classList.add('hidden');
     dom.btnWhiteboardToggle.classList.remove('active');
+    // Reset video grid and speaker view when closing whiteboard
+    if (state.layoutMode === 'grid') {
+      dom.videoGrid.classList.remove('hidden');
+      dom.speakerViewContainer.classList.add('hidden');
+    } else {
+      dom.videoGrid.classList.add('hidden');
+      dom.speakerViewContainer.classList.remove('hidden');
+    }
+    // Force re-render of video tiles
+    updateVideoGridCount();
+    if (state.layoutMode === 'speaker') {
+      updateSpeakerViewLayout();
+    }
   }
   syncPresentationVideoStrip();
 }
