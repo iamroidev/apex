@@ -233,12 +233,21 @@ function exportSessionJSON(sessionId) {
   return { session, attendance, chat };
 }
 
+function escapeCSV(val) {
+  if (val === null || val === undefined) return '';
+  const str = String(val);
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
+}
+
 function exportSessionCSV(sessionId) {
   const attendance = getAttendance(sessionId);
   if (attendance.length === 0) return 'participant_id,display_name,role,joined_at,left_at,duration_seconds\n';
   const header = 'participant_id,display_name,role,joined_at,left_at,duration_seconds';
   const rows = attendance.map(a =>
-    `${a.participant_id},"${a.display_name}",${a.role},${a.joined_at},${a.left_at || ''},${a.duration_seconds}`
+    `${escapeCSV(a.participant_id)},${escapeCSV(a.display_name)},${escapeCSV(a.role)},${escapeCSV(a.joined_at)},${escapeCSV(a.left_at)},${a.duration_seconds}`
   );
   return [header, ...rows].join('\n');
 }

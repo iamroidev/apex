@@ -2042,6 +2042,7 @@ export function playChime(type) {
     osc.connect(gain);
     gain.connect(audioCtx.destination);
 
+    let duration = 0.2;
     if (type === 'chat') {
       osc.type = 'sine';
       osc.frequency.setValueAtTime(800, audioCtx.currentTime);
@@ -2049,6 +2050,7 @@ export function playChime(type) {
       gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.12);
+      duration = 0.15;
     } else if (type === 'hand') {
       osc.type = 'triangle';
       osc.frequency.setValueAtTime(400, audioCtx.currentTime);
@@ -2057,7 +2059,12 @@ export function playChime(type) {
       gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
       osc.start();
       osc.stop(audioCtx.currentTime + 0.35);
+      duration = 0.4;
     }
+
+    setTimeout(() => {
+      audioCtx.close().catch(() => {});
+    }, duration * 1000 + 50);
   } catch (e) {
     console.warn('Procedural chime playback failed:', e);
   }
