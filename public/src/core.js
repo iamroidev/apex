@@ -125,7 +125,20 @@ export const state = {
   autoPipVideo: null,
   captionsEnabled: false,
   isLocalMinimized: false,
-  sidePanelFloating: false
+  sidePanelFloating: false,
+  activeSpeakerId: null,
+  activeSpeakerDebounceTimer: null,
+  disableIncomingVideo: false,
+  chatSearchQuery: '',
+  wbRedoStack: [],
+  hideSelfView: false,
+  hideNonVideo: false,
+  autoMuteOnEntry: true,
+  mirrorLocalVideo: false,
+  isBrb: false,
+  wbLaserActive: false,
+  vanishingPaths: [],
+  individualVolumes: {}
 };
 
 export const dom = {
@@ -370,10 +383,30 @@ export const dom = {
   waitingRoomMeetingTitle: $('#waiting-room-meeting-title'),
   btnCancelWaiting: $('#btn-cancel-waiting'),
 
-  // Log Details
   modalLogDetails: $('#modal-log-details'),
   logDetailsTbody: $('#log-details-tbody'),
   btnLogDetailsClose: $('#btn-log-details-close'),
+
+  // New Zoom-like meeting & whiteboard overlays DOM caches
+  btnWbUndo: $('#btn-wb-undo'),
+  btnWbRedo: $('#btn-wb-redo'),
+  btnWbSave: $('#btn-wb-save'),
+  chatSearchInput: $('#chat-search-input'),
+  settingsIncomingVideo: $('#settings-incoming-video'),
+  micLevelMeter: $('#mic-level-meter'),
+  wbVideoStrip: $('#wb-video-strip'),
+  slidesVideoStrip: $('#slides-video-strip'),
+  wbStripTiles: $('#wb-strip-tiles'),
+  slidesStripTiles: $('#slides-strip-tiles'),
+  btnWbStripDock: $('#btn-wb-strip-dock'),
+  btnSlidesStripDock: $('#btn-slides-strip-dock'),
+  settingsHideSelf: $('#settings-hide-self'),
+  settingsHideNonVideo: $('#settings-hide-non-video'),
+  settingsAutoMute: $('#settings-auto-mute'),
+  settingsMirrorLocal: $('#settings-mirror-local'),
+  btnWbLaser: $('#btn-wb-laser'),
+  btnMuteAllExceptPresenter: $('#btn-mute-all-except-presenter'),
+  btnBrb: $('#btn-brb'),
 };
 
 export function genId() {

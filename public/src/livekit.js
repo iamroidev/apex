@@ -1,6 +1,6 @@
 // public/src/livekit.js — LiveKit Client SFU wrapper room connection and events
 import { state, dom, escapeHtml } from './core.js';
-import { getCSSFilter, updateVideoGridCount, addPipButtonToTile, updateSpeakerViewLayout } from './media.js';
+import { getCSSFilter, updateVideoGridCount, addPipButtonToTile, updateSpeakerViewLayout, appendTileToCorrectGridOrStrip } from './media.js';
 
 export async function connectToLiveKit(wsUrl, token) {
   try {
@@ -23,7 +23,13 @@ export async function connectToLiveKit(wsUrl, token) {
           const video = tile.querySelector('video');
           if (video) {
             track.attach(video);
-            tile.querySelector('.tile-avatar').classList.add('hidden');
+            if (state.disableIncomingVideo) {
+              video.classList.add('hidden');
+              publication.setEnabled(false);
+              tile.querySelector('.tile-avatar').classList.remove('hidden');
+            } else {
+              tile.querySelector('.tile-avatar').classList.add('hidden');
+            }
             
             if (publication.source === 'screen_share') {
               tile.classList.add('screen-sharing');
@@ -79,6 +85,11 @@ export async function connectToLiveKit(wsUrl, token) {
       const remoteTiles = dom.videoGrid.querySelectorAll('.video-tile:not(.local-tile)');
       remoteTiles.forEach(t => t.classList.remove('speaking'));
       
+      let loudestSpeakerId = null;
+      if (speakers && speakers.length > 0) {
+        loudestSpeakerId = speakers[0].identity;
+      }
+      
       speakers.forEach(speaker => {
         if (speaker.identity === state.participantId) {
           dom.localTile.classList.add('speaking');
@@ -88,8 +99,27 @@ export async function connectToLiveKit(wsUrl, token) {
         }
       });
       
+      // Debounce active speaker spotlight transitions (must be loudest for 1.2s to switch)
       if (state.layoutMode === 'speaker') {
-        updateSpeakerViewLayout();
+        if (loudestSpeakerId && loudestSpeakerId !== state.activeSpeakerId) {
+          if (state.activeSpeakerDebounceTimer) {
+            clearTimeout(state.activeSpeakerDebounceTimer);
+          }
+          state.activeSpeakerDebounceTimer = setTimeout(() => {
+            state.activeSpeakerId = loudestSpeakerId;
+            updateSpeakerViewLayout();
+            state.activeSpeakerDebounceTimer = null;
+          }, 1200);
+        } else if (!loudestSpeakerId) {
+          if (state.activeSpeakerDebounceTimer) {
+            clearTimeout(state.activeSpeakerDebounceTimer);
+            state.activeSpeakerDebounceTimer = null;
+          }
+          state.activeSpeakerId = null;
+          updateSpeakerViewLayout();
+        }
+      } else {
+        state.activeSpeakerId = loudestSpeakerId;
       }
     });
 
@@ -168,6 +198,6 @@ export function createLiveKitTile(participantId, displayName) {
   avatar.innerHTML = `<span class="avatar-letter">${(displayName || 'P').charAt(0).toUpperCase()}</span>`;
   tile.appendChild(avatar);
   
-  dom.videoGrid.appendChild(tile);
+  appendTileToCorrectGridOrStrip(tile);
   addPipButtonToTile(tile);
 }

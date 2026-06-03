@@ -1,5 +1,6 @@
 // public/src/chat.js — Chat Message handling, private DMs, file attachments download and upload
 import { state, dom, escapeHtml, genId } from './core.js';
+import { playChime } from './main.js';
 
 export function bindChat() {
   dom.btnSendChat.addEventListener('click', sendChat);
@@ -9,6 +10,12 @@ export function bindChat() {
       sendChat();
     }
   });
+
+  if (dom.chatSearchInput) {
+    dom.chatSearchInput.addEventListener('input', (e) => {
+      filterChatMessages(e.target.value);
+    });
+  }
 }
 
 export function sendChat() {
@@ -68,6 +75,69 @@ export function sendChat() {
   }
 }
 
+export function formatMessageText(text) {
+  let escapedText = escapeHtml(text);
+  
+  // Format code blocks: ```code```
+  const codeBlockRegex = /```([\s\S]*?)```/g;
+  escapedText = escapedText.replace(codeBlockRegex, (match, code) => {
+    const copyId = 'copy-' + genId();
+    if (!window._copyTexts) window._copyTexts = {};
+    window._copyTexts[copyId] = code.trim();
+    
+    return `
+      <div class="chat-copy-container" style="position: relative; margin: var(--sp-2) 0; background: var(--bg-elevated); border: 1px solid var(--border-strong); padding: var(--sp-2); border-radius: var(--radius-sm); font-family: monospace; white-space: pre-wrap; font-size: var(--text-xs); color: var(--accent-cyan); padding-top: var(--sp-6);">
+        <button class="chat-copy-btn" onclick="window._apex.copyChatText('${copyId}', this)">Copy</button>
+        <code>${code.trim()}</code>
+      </div>
+    `;
+  });
+
+  // Format inline code: `code`
+  const inlineCodeRegex = /`([^`]+)`/g;
+  escapedText = escapedText.replace(inlineCodeRegex, (match, code) => {
+    return `<code style="font-family: monospace; background: var(--bg-elevated); padding: 2px 4px; border-radius: var(--radius-xs); font-size: 0.9em; color: var(--accent-cyan); border: 1px solid var(--border-subtle);">${code}</code>`;
+  });
+
+  // Format URLs
+  const urlRegex = /(https?:\/\/[^\s<]+)/g;
+  escapedText = escapedText.replace(urlRegex, (url) => {
+    const copyId = 'copy-' + genId();
+    if (!window._copyTexts) window._copyTexts = {};
+    window._copyTexts[copyId] = url;
+    
+    return `
+      <span class="chat-copy-container" style="position: relative; display: inline-block;">
+        <a href="${url}" target="_blank" rel="noopener noreferrer" style="color: var(--accent-cyan); text-decoration: underline; word-break: break-all;">${url}</a>
+        <button class="chat-copy-btn" style="position: static; display: inline-block; margin-left: 6px; padding: 1px 3px; font-size: 8px; vertical-align: middle;" onclick="window._apex.copyChatText('${copyId}', this)">Copy</button>
+      </span>
+    `;
+  });
+
+  return escapedText;
+}
+
+export function filterChatMessages(query) {
+  const q = query.toLowerCase().trim();
+  const messages = dom.chatMessages.querySelectorAll('.chat-msg');
+  messages.forEach(msg => {
+    const textEl = msg.querySelector('.chat-msg-text');
+    const fileEl = msg.querySelector('.chat-file-name');
+    const nameEl = msg.querySelector('.chat-msg-name');
+    
+    let content = '';
+    if (textEl) content += textEl.textContent.toLowerCase();
+    if (fileEl) content += fileEl.textContent.toLowerCase();
+    if (nameEl) content += nameEl.textContent.toLowerCase();
+    
+    if (content.includes(q)) {
+      msg.classList.remove('hidden-by-search');
+    } else {
+      msg.classList.add('hidden-by-search');
+    }
+  });
+}
+
 export function appendChatMessage(name, text, isSelf, timestamp, isPrivate = false, recipientName = null) {
   const div = document.createElement('div');
   
@@ -116,9 +186,10 @@ export function appendChatMessage(name, text, isSelf, timestamp, isPrivate = fal
   }
 
   if (!contentHtml) {
+    const formattedText = formatMessageText(text);
     contentHtml = `
       <div class="chat-msg-name" style="${isPrivate ? 'color: var(--accent-lavender);' : ''}">${nameLabel}</div>
-      <div class="chat-msg-text">${escapeHtml(text)}</div>
+      <div class="chat-msg-text">${formattedText}</div>
       <div class="chat-msg-time">${time}</div>
     `;
   }
@@ -126,6 +197,10 @@ export function appendChatMessage(name, text, isSelf, timestamp, isPrivate = fal
   div.innerHTML = contentHtml;
   dom.chatMessages.appendChild(div);
   dom.chatMessages.scrollTop = dom.chatMessages.scrollHeight;
+
+  if (!isSelf) {
+    playChime('chat');
+  }
 }
 
 export function handleFileSelect(e) {
@@ -212,4 +287,23 @@ export function downloadFile(fileId) {
   a.download = fileObj.fileName;
   a.click();
   URL.revokeObjectURL(url);
+}
+
+export function copyChatText(copyId, btn) {
+  const text = window._copyTexts?.[copyId];
+  if (!text) return;
+  
+  navigator.clipboard.writeText(text).then(() => {
+    const originalText = btn.textContent;
+    btn.textContent = 'Copied!';
+    btn.style.background = 'var(--accent-green, #39ff14)';
+    btn.style.color = '#000';
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.style.background = '';
+      btn.style.color = '';
+    }, 1500);
+  }).catch(err => {
+    console.warn('Failed to copy chat text:', err);
+  });
 }

@@ -33,12 +33,21 @@ import {
   initFullscreenAndPip,
   toggleCaptions,
   toggleSelfMinimization,
-  initFocusMode
+  initFocusMode,
+  initGreenRoomMicMeter,
+  clearGreenRoomMicMeter,
+  toggleDisableIncomingVideo,
+  initPresentationVideoStrips,
+  syncPresentationVideoStrip,
+  appendTileToCorrectGridOrStrip,
+  toggleHideSelfView,
+  toggleHideNonVideoParticipants,
+  toggleMirrorLocalVideo
 } from './media.js';
 import { connectToRoom } from './webrtc.js';
 import { connectToLiveKit } from './livekit.js';
 import { bindWhiteboard, clearWhiteboard, resizeWhiteboard } from './whiteboard.js';
-import { bindChat, downloadFile, handleFileSelect } from './chat.js';
+import { bindChat, downloadFile, handleFileSelect, copyChatText } from './chat.js';
 import {
   showPollModal,
   launchPoll,
@@ -246,6 +255,8 @@ export async function showGreenRoomPreview(roomId) {
         videoEl.style.display = 'block';
       }
       
+      initGreenRoomMicMeter(previewStream);
+      
       previewStream.getVideoTracks().forEach(t => t.enabled = state.camEnabled);
       previewStream.getAudioTracks().forEach(t => t.enabled = state.micEnabled);
     } catch (err) {
@@ -309,6 +320,7 @@ export async function showGreenRoomPreview(roomId) {
       previewStream.getTracks().forEach(t => t.stop());
       previewStream = null;
     }
+    clearGreenRoomMicMeter();
     previewModal.classList.add('hidden');
   };
 
@@ -317,6 +329,7 @@ export async function showGreenRoomPreview(roomId) {
       previewStream.getTracks().forEach(t => t.stop());
       previewStream = null;
     }
+    clearGreenRoomMicMeter();
     previewModal.classList.add('hidden');
     enterMeeting(roomId);
   };
@@ -377,6 +390,9 @@ export async function enterMeeting(roomId) {
 
   showView('meeting');
   startTimer();
+  if (state.autoMuteOnEntry) {
+    state.micEnabled = false;
+  }
   await initMedia();
   updateParticipantsList();
 
@@ -552,6 +568,7 @@ export function toggleWhiteboard() {
     dom.wbOverlay.classList.add('hidden');
     dom.btnWhiteboardToggle.classList.remove('active');
   }
+  syncPresentationVideoStrip();
 }
 
 export function toggleRecording() {
@@ -629,6 +646,12 @@ export function toggleHandRaise() {
 export function bindMeetingControls() {
   dom.btnMic.addEventListener('click', toggleMic);
   dom.btnCam.addEventListener('click', toggleCam);
+  if (dom.btnBrb) {
+    dom.btnBrb.addEventListener('click', toggleBrb);
+  }
+  if (dom.btnMuteAllExceptPresenter) {
+    dom.btnMuteAllExceptPresenter.addEventListener('click', muteAllExceptPresenter);
+  }
   dom.btnScreen.addEventListener('click', toggleScreenShare);
   dom.btnRecord.addEventListener('click', toggleRecording);
   dom.btnLeave.addEventListener('click', leaveMeeting);
@@ -741,7 +764,7 @@ function createBotTile(bot) {
     <span class="tile-speaking-indicator"></span>`;
   tile.appendChild(overlay);
 
-  dom.videoGrid.appendChild(tile);
+  appendTileToCorrectGridOrStrip(tile);
 }
 
 export function startBotActivity() {
@@ -1137,6 +1160,8 @@ export function stopSlidesSharing() {
   state.socket.emit('slide-share-stop', { roomId: state.roomId });
   updateParticipantsList();
   stopPresenterOverlayLoop();
+  
+  syncPresentationVideoStrip();
 }
 
 export function changeSlide(direction) {
@@ -1666,6 +1691,24 @@ export function bindNewInMeetingFeatures() {
   dom.settingsSpeaker.addEventListener('change', changeSpeakerDevice);
   dom.settingsVideoFilter.addEventListener('change', changeVideoFilter);
   dom.settingsNoiseSuppression.addEventListener('change', changeNoiseSuppression);
+  if (dom.settingsIncomingVideo) {
+    dom.settingsIncomingVideo.addEventListener('change', toggleDisableIncomingVideo);
+  }
+  if (dom.settingsHideSelf) {
+    dom.settingsHideSelf.addEventListener('change', toggleHideSelfView);
+  }
+  if (dom.settingsHideNonVideo) {
+    dom.settingsHideNonVideo.addEventListener('change', toggleHideNonVideoParticipants);
+  }
+  if (dom.settingsMirrorLocal) {
+    dom.settingsMirrorLocal.addEventListener('change', toggleMirrorLocalVideo);
+  }
+  if (dom.settingsAutoMute) {
+    dom.settingsAutoMute.addEventListener('change', (e) => {
+      state.autoMuteOnEntry = e.target.checked;
+      localStorage.setItem('apex_autoMuteOnEntry', state.autoMuteOnEntry);
+    });
+  }
 
   // Waiting Room & Security Controls
   dom.btnToggleWaitingRoom.addEventListener('click', toggleWaitingRoomHost);
@@ -1865,6 +1908,12 @@ async function openSettings() {
     dom.settingsOverlayType.value = state.presenterOverlayType;
     dom.settingsChromaColor.value = state.presenterChromaColor;
     dom.settingsChromaTolerance.value = state.presenterChromaTolerance;
+    
+    if (dom.settingsIncomingVideo) dom.settingsIncomingVideo.checked = state.disableIncomingVideo;
+    if (dom.settingsHideSelf) dom.settingsHideSelf.checked = state.hideSelfView;
+    if (dom.settingsHideNonVideo) dom.settingsHideNonVideo.checked = state.hideNonVideo;
+    if (dom.settingsAutoMute) dom.settingsAutoMute.checked = state.autoMuteOnEntry;
+    if (dom.settingsMirrorLocal) dom.settingsMirrorLocal.checked = state.mirrorLocalVideo;
 
     document.querySelectorAll('.id-presenter-overlay-options').forEach(el => {
       el.classList.toggle('hidden', !state.presenterOverlayEnabled);
@@ -1883,15 +1932,28 @@ async function openSettings() {
 async function init() {
   state.participantId = genId();
 
+  loadMeetingPreferences();
   initTheme();
   initAnnotationCanvas();
   bindLanding();
   bindDashboard();
   bindMeetingControls();
+  
+  // Initialize Zoom & Pan
+  const spotlightContainer = document.getElementById('spotlight-area');
+  if (spotlightContainer) {
+    initZoomAndPan(spotlightContainer, '.video-tile, video');
+  }
+  const slidesContainer = document.getElementById('slides-content-container');
+  if (slidesContainer) {
+    initZoomAndPan(slidesContainer, 'img, .slide-card, div');
+  }
   bindChat();
   bindWhiteboard();
   bindReactions();
   bindNewInMeetingFeatures();
+  initPushToTalk();
+  initPresentationVideoStrips();
 
   const urlParams = new URLSearchParams(window.location.search);
   const inviteRoom = urlParams.get('join') || urlParams.get('room');
@@ -1971,6 +2033,312 @@ async function init() {
   }
 }
 
+// Web Audio Alert Chimes
+export function playChime(type) {
+  try {
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+
+    if (type === 'chat') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.12);
+    } else if (type === 'hand') {
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(400, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.25);
+      gain.gain.setValueAtTime(0.06, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.35);
+    }
+  } catch (e) {
+    console.warn('Procedural chime playback failed:', e);
+  }
+}
+
+// Hand Raise Toast Notification
+export function showHandRaiseToast(displayName, raised) {
+  if (!raised) return;
+  
+  playChime('hand');
+
+  const toast = document.createElement('div');
+  toast.className = 'hand-raise-toast';
+  toast.innerHTML = `
+    <span style="font-size: 16px; margin-right: 8px;">✋</span>
+    <span><strong>${escapeHtml(displayName)}</strong> raised their hand</span>
+  `;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.classList.add('visible');
+  }, 20);
+
+  setTimeout(() => {
+    toast.classList.remove('visible');
+    setTimeout(() => toast.remove(), 400);
+  }, 4000);
+}
+
+// Rename Local Participant
+export function renameSelf() {
+  const currentName = state.userName || localStorage.getItem('apexDisplayName') || 'Participant';
+  const newName = prompt("Enter your new display name:", currentName);
+  if (newName && newName.trim() && newName.trim() !== currentName) {
+    const trimmed = newName.trim();
+    state.userName = trimmed;
+    localStorage.setItem('apexDisplayName', trimmed);
+    
+    // Update local UI
+    if (dom.localNameLabel) dom.localNameLabel.textContent = trimmed;
+    const localAvatarLetter = dom.localTile?.querySelector('.avatar-letter');
+    if (localAvatarLetter) localAvatarLetter.textContent = trimmed.charAt(0).toUpperCase();
+    
+    // Update LiveKit metadata if connected
+    if (state.livekitConnected && state.livekitRoom) {
+      state.livekitRoom.localParticipant.setMetadata(JSON.stringify({ displayName: trimmed }));
+    }
+    
+    // Broadcast renamed socket event
+    if (state.socket) {
+      state.socket.emit('rename-participant', { roomId: state.roomId, displayName: trimmed });
+    }
+    
+    updateParticipantsList();
+  }
+}
+
+// Push-to-Talk (PTT) Keyboard listeners
+let isSpacePressed = false;
+let spaceUnmuted = false;
+
+export function initPushToTalk() {
+  window.addEventListener('keydown', (e) => {
+    if (state.view !== 'meeting') return;
+    
+    const activeEl = document.activeElement;
+    if (activeEl && (
+      activeEl.tagName === 'INPUT' || 
+      activeEl.tagName === 'TEXTAREA' || 
+      activeEl.tagName === 'SELECT' ||
+      activeEl.isContentEditable
+    )) {
+      return;
+    }
+    
+    if (e.key === ' ' || e.code === 'Space') {
+      e.preventDefault();
+      if (isSpacePressed) return;
+      isSpacePressed = true;
+      
+      if (!state.micEnabled) {
+        toggleMic();
+        spaceUnmuted = true;
+      }
+    }
+  });
+  
+  window.addEventListener('keyup', (e) => {
+    if (state.view !== 'meeting') return;
+    
+    if (e.key === ' ' || e.code === 'Space') {
+      isSpacePressed = false;
+      if (spaceUnmuted) {
+        if (state.micEnabled) {
+          toggleMic();
+        }
+        spaceUnmuted = false;
+      }
+    }
+  });
+}
+
+export function loadMeetingPreferences() {
+  state.hideSelfView = localStorage.getItem('apex_hideSelfView') === 'true';
+  state.hideNonVideo = localStorage.getItem('apex_hideNonVideo') === 'true';
+  state.autoMuteOnEntry = localStorage.getItem('apex_autoMuteOnEntry') !== 'false';
+  state.mirrorLocalVideo = localStorage.getItem('apex_mirrorLocalVideo') === 'true';
+}
+
+export function toggleBrb() {
+  if (!state.socket) return;
+  state.isBrb = !state.isBrb;
+  const btn = dom.btnBrb;
+  const label = document.getElementById('brb-label');
+  
+  if (state.isBrb) {
+    if (btn) {
+      btn.classList.add('active');
+      btn.style.background = '#fbf719';
+      btn.style.color = '#000';
+    }
+    if (label) label.style.display = 'inline';
+
+    state.prevCamState = state.camEnabled;
+    state.prevMicState = state.micEnabled;
+
+    if (state.micEnabled) toggleMic();
+    if (state.camEnabled) toggleCam();
+
+    dom.btnMic.disabled = true;
+    dom.btnCam.disabled = true;
+
+    state.socket.emit('participant-status-change', {
+      roomId: state.roomId,
+      participantId: state.participantId,
+      isBrb: true,
+      brbTime: Date.now()
+    });
+    
+    if (!state.brbStates) state.brbStates = {};
+    state.brbStates[state.participantId] = Date.now();
+  } else {
+    if (btn) {
+      btn.classList.remove('active');
+      btn.style.background = '';
+      btn.style.color = '';
+    }
+    if (label) label.style.display = 'none';
+
+    dom.btnMic.disabled = false;
+    dom.btnCam.disabled = false;
+
+    if (state.prevMicState && !state.micEnabled) toggleMic();
+    if (state.prevCamState && !state.camEnabled) toggleCam();
+
+    state.socket.emit('participant-status-change', {
+      roomId: state.roomId,
+      participantId: state.participantId,
+      isBrb: false,
+      brbTime: null
+    });
+
+    if (!state.brbStates) state.brbStates = {};
+    state.brbStates[state.participantId] = null;
+  }
+}
+
+export function muteAllExceptPresenter() {
+  if (!state.isHost && state.role !== 'cohost') return;
+  if (!state.socket) return;
+  state.socket.emit('mute-all-except-presenter', { roomId: state.roomId });
+}
+
+export function initZoomAndPan(container, targetSelector) {
+  if (!container) return;
+
+  let zoom = 1;
+  let panX = 0;
+  let panY = 0;
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+
+  container.classList.add('zoomable-container');
+
+  function updateTransform() {
+    const target = container.querySelector(targetSelector);
+    if (!target) return;
+    target.style.transform = `scale(${zoom}) translate(${panX}px, ${panY}px)`;
+    target.style.transformOrigin = 'center center';
+    target.style.transition = isDragging ? 'none' : 'transform 0.1s ease-out';
+  }
+
+  container.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const zoomFactor = 0.15;
+    if (e.deltaY < 0) {
+      zoom = Math.min(5, zoom + zoomFactor);
+    } else {
+      zoom = Math.max(1, zoom - zoomFactor);
+    }
+    
+    if (zoom === 1) {
+      panX = 0;
+      panY = 0;
+    }
+    updateTransform();
+  }, { passive: false });
+
+  container.addEventListener('mousedown', (e) => {
+    if (zoom <= 1) return;
+    isDragging = true;
+    startX = e.clientX - panX * zoom;
+    startY = e.clientY - panY * zoom;
+    container.style.cursor = 'grabbing';
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    panX = (e.clientX - startX) / zoom;
+    panY = (e.clientY - startY) / zoom;
+    updateTransform();
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      container.style.cursor = 'grab';
+    }
+  });
+
+  let initialDist = 0;
+  container.addEventListener('touchstart', (e) => {
+    if (e.touches.length === 2) {
+      initialDist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+    } else if (e.touches.length === 1 && zoom > 1) {
+      isDragging = true;
+      startX = e.touches[0].clientX - panX * zoom;
+      startY = e.touches[0].clientY - panY * zoom;
+    }
+  });
+
+  container.addEventListener('touchmove', (e) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      const factor = dist / initialDist;
+      zoom = Math.min(5, Math.max(1, zoom * factor));
+      initialDist = dist;
+      if (zoom === 1) {
+        panX = 0;
+        panY = 0;
+      }
+      updateTransform();
+    } else if (e.touches.length === 1 && isDragging) {
+      panX = (e.touches[0].clientX - startX) / zoom;
+      panY = (e.touches[0].clientY - startY) / zoom;
+      updateTransform();
+    }
+  });
+
+  container.addEventListener('touchend', () => {
+    isDragging = false;
+  });
+
+  container.addEventListener('dblclick', (e) => {
+    if (e.target === container || e.target.tagName === 'VIDEO' || e.target.tagName === 'IMG' || e.target.classList.contains('slide-card')) {
+      zoom = 1;
+      panX = 0;
+      panY = 0;
+      updateTransform();
+      e.stopPropagation();
+    }
+  });
+}
+
 // Expose public API methods on window._apex for inline dynamic HTML template references
 window._apex = {
   joinMeeting,
@@ -1990,7 +2358,11 @@ window._apex = {
   joinSelfSelectedBreakout,
   askToUnmute,
   lowerParticipantHand,
-  stopParticipantVideo
+  stopParticipantVideo,
+  renameSelf,
+  toggleBrb,
+  muteAllExceptPresenter,
+  copyChatText
 };
 
 document.addEventListener('DOMContentLoaded', init);

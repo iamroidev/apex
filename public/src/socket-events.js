@@ -4,7 +4,7 @@ import { addRemotePeer, removeRemotePeer, createOffer, handleOffer } from './web
 import { appendChatMessage } from './chat.js';
 import { drawRemotePath, clearWhiteboard, redrawWhiteboard } from './whiteboard.js';
 import { spawnFloatingReaction } from './ui.js';
-import { handleRemoteHandRaise, updateHandIconsOnTiles, toggleMic, toggleCam, displayCaption, getCSSFilter } from './media.js';
+import { handleRemoteHandRaise, updateHandIconsOnTiles, toggleMic, toggleCam, displayCaption, getCSSFilter, syncPresentationVideoStrip } from './media.js';
 import { handlePollCreated, handlePollVoted, handlePollEnded } from './polling.js';
 import { handleBreakoutAssigned, handleBreakoutEnded, openBreakoutSelectionModal } from './breakout.js';
 import { drawStroke, clearAnnotations, startPresenterOverlayLoop, stopPresenterOverlayLoop } from './overlay.js';
@@ -100,12 +100,59 @@ export function bindSocketEvents() {
   // Hand raise
   s.on('hand-raise', ({ participantId, raised }) => {
     handleRemoteHandRaise(participantId, raised);
+    
+    if (raised) {
+      let displayName = 'Someone';
+      if (participantId === state.participantId) {
+        displayName = state.userName || 'You';
+      } else {
+        const peer = [...state.peers.values()].find(p => p.info.participantId === participantId);
+        if (peer) displayName = peer.info.displayName;
+      }
+      
+      import('./main.js').then(m => {
+        m.showHandRaiseToast(displayName, raised);
+      });
+    }
   });
 
   // Host moderation commands
   s.on('mute-command', () => {
     if (state.micEnabled) {
       toggleMic();
+      
+      // Muted by Host custom alert popup
+      const alertBox = document.createElement('div');
+      alertBox.style.cssText = `
+        position: fixed;
+        bottom: 80px;
+        left: 24px;
+        background: var(--bg-surface);
+        color: var(--accent-coral);
+        border: 2px solid var(--border-strong);
+        padding: var(--sp-2) var(--sp-4);
+        box-shadow: var(--neo-shadow-coral);
+        font-family: var(--font);
+        font-size: var(--text-sm);
+        font-weight: bold;
+        z-index: 10000;
+        transition: all 0.3s ease;
+        opacity: 0;
+        transform: translateY(20px);
+      `;
+      alertBox.innerHTML = `🎙️ The host has muted your microphone.`;
+      document.body.appendChild(alertBox);
+      
+      setTimeout(() => {
+        alertBox.style.opacity = '1';
+        alertBox.style.transform = 'translateY(0)';
+      }, 50);
+      
+      setTimeout(() => {
+        alertBox.style.opacity = '0';
+        alertBox.style.transform = 'translateY(20px)';
+        setTimeout(() => alertBox.remove(), 300);
+      }, 5000);
     }
   });
 
@@ -199,6 +246,24 @@ export function bindSocketEvents() {
     updateParticipantsList();
   });
 
+  s.on('participant-renamed', ({ socketId, displayName }) => {
+    const peer = state.peers.get(socketId);
+    if (peer) {
+      peer.info.displayName = displayName;
+    }
+    
+    // Update remote video tile name overlay and avatar letter
+    const tile = document.querySelector(`.video-tile[data-socket="${socketId}"]`) || 
+                 document.querySelector(`.video-tile[data-participant="${peer?.info?.participantId}"]`);
+    if (tile) {
+      const nameEl = tile.querySelector('.tile-name');
+      if (nameEl) nameEl.textContent = displayName;
+      const avatarEl = tile.querySelector('.tile-avatar .avatar-letter');
+      if (avatarEl) avatarEl.textContent = displayName.charAt(0).toUpperCase();
+    }
+    updateParticipantsList();
+  });
+
   s.on('screenshare-started', ({ fromSocketId }) => {
     onScreenShareActive(true, fromSocketId);
   });
@@ -249,6 +314,7 @@ export function bindSocketEvents() {
     if (state.presenterOverlayEnabled) {
       startPresenterOverlayLoop();
     }
+    syncPresentationVideoStrip();
   });
 
   s.on('slide-share-stopped', () => {
@@ -260,6 +326,7 @@ export function bindSocketEvents() {
     dom.slidesOverlay.classList.add('hidden');
     updateParticipantsList();
     stopPresenterOverlayLoop();
+    syncPresentationVideoStrip();
   });
 
   s.on('slide-changed', ({ slideIndex }) => {
@@ -337,6 +404,31 @@ export function bindSocketEvents() {
   s.on('whiteboard-history', (paths) => {
     state.wbPaths = paths;
     redrawWhiteboard();
+  });
+
+  // 13+ Meeting UX Refinements Socket Listeners
+  s.on('participant-status-changed', ({ socketId, participantId, isBrb, brbTime }) => {
+    if (!state.brbStates) state.brbStates = {};
+    const key = participantId || socketId;
+    if (isBrb) {
+      state.brbStates[key] = brbTime;
+    } else {
+      state.brbStates[key] = null;
+    }
+  });
+
+  s.on('whiteboard-laser', ({ socketId, x, y, isStart }) => {
+    import('./whiteboard.js').then((wbMod) => {
+      wbMod.addLaserPointLocal(x, y, isStart);
+    });
+  });
+
+  s.on('mute-all-except-presenter-command', ({ presenterSocketId }) => {
+    if (s.id !== presenterSocketId) {
+      if (state.micEnabled) {
+        toggleMic();
+      }
+    }
   });
 }
 

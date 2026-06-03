@@ -265,6 +265,13 @@ function clearWhiteboardPaths(sessionId) {
   ).run(sessionId);
 }
 
+function undoLastWhiteboardPath(sessionId) {
+  getDb().prepare(
+    `DELETE FROM whiteboard_paths 
+     WHERE id = (SELECT max(id) FROM whiteboard_paths WHERE session_id = ?)`
+  ).run(sessionId);
+}
+
 module.exports = {
   getDb,
   createUser, getUserByUsername, getUserById, verifyPassword,
@@ -273,5 +280,5 @@ module.exports = {
   saveChat, getChatHistory,
   scheduleMeeting, listScheduledMeetings, deleteScheduledMeeting,
   exportSessionJSON, exportSessionCSV,
-  saveWhiteboardPath, getWhiteboardPaths, clearWhiteboardPaths
+  saveWhiteboardPath, getWhiteboardPaths, clearWhiteboardPaths, undoLastWhiteboardPath
 };

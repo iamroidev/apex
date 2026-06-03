@@ -450,6 +450,27 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('whiteboard-undo', ({ roomId }) => {
+    try {
+      db.undoLastWhiteboardPath(roomId);
+      const paths = db.getWhiteboardPaths(roomId);
+      io.to(roomId).emit('whiteboard-history', paths.map(p => JSON.parse(p)));
+    } catch (e) {
+      console.error('Failed to undo whiteboard path:', e.message);
+    }
+  });
+
+  socket.on('rename-participant', ({ roomId, displayName }) => {
+    if (roomId && rooms.has(roomId)) {
+      const room = rooms.get(roomId);
+      const p = room.get(socket.id);
+      if (p) {
+        p.displayName = displayName;
+        io.to(roomId).emit('participant-renamed', { socketId: socket.id, displayName });
+      }
+    }
+  });
+
   // Speech closed captions forwarding
   socket.on('speech-transcription', ({ roomId, text, final }) => {
     const room = rooms.get(roomId);
@@ -739,6 +760,19 @@ io.on('connection', (socket) => {
   socket.on('unmute-request', ({ roomId, targetSocketId }) => {
     if (!hasModPowers(roomId, socket.id)) return;
     io.to(targetSocketId).emit('unmute-request-prompt');
+  });
+
+  socket.on('participant-status-change', ({ roomId, participantId, isBrb, brbTime }) => {
+    socket.to(roomId).emit('participant-status-changed', { socketId: socket.id, participantId, isBrb, brbTime });
+  });
+
+  socket.on('whiteboard-laser', ({ roomId, x, y, isStart }) => {
+    socket.to(roomId).emit('whiteboard-laser', { socketId: socket.id, x, y, isStart });
+  });
+
+  socket.on('mute-all-except-presenter', ({ roomId, presenterSocketId }) => {
+    if (!hasModPowers(roomId, socket.id)) return;
+    socket.to(roomId).emit('mute-all-except-presenter-command', { presenterSocketId });
   });
 
   // Disconnect
