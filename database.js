@@ -180,10 +180,10 @@ function logLeave(sessionId, participantId) {
   ).run(sessionId, participantId);
 }
 
-function getAttendance(sessionId) {
+function getAttendance(sessionId, limit = 1000, offset = 0) {
   return getDb().prepare(
-    'SELECT * FROM attendance WHERE session_id = ? ORDER BY joined_at ASC'
-  ).all(sessionId);
+    'SELECT * FROM attendance WHERE session_id = ? ORDER BY joined_at ASC LIMIT ? OFFSET ?'
+  ).all(sessionId, limit, offset);
 }
 
 // --- Chat helpers ---
@@ -196,10 +196,10 @@ function saveChat(sessionId, senderId, senderName, message) {
   ).run(sessionId, senderId, senderName, message);
 }
 
-function getChatHistory(sessionId) {
+function getChatHistory(sessionId, limit = 1000, offset = 0) {
   return getDb().prepare(
-    'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY sent_at ASC'
-  ).all(sessionId);
+    'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY sent_at ASC LIMIT ? OFFSET ?'
+  ).all(sessionId, limit, offset);
 }
 
 function getScheduledMeeting(id) {
