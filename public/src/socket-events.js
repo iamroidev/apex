@@ -344,5 +344,8 @@ function updateVideoGridCountLocal() {
   // Simple local import wrapper to avoid circular dependency execution issues
   import('./media.js').then((mediaMod) => {
     mediaMod.updateVideoGridCount();
+    if (state.layoutMode === 'speaker') {
+      mediaMod.updateSpeakerViewLayout();
+    }
   });
 }

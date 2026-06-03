@@ -1386,8 +1386,19 @@ export function onScreenShareActive(active, presenterSocketId) {
       toggleLayoutMode();
     }
     if (presenterSocketId) {
-      state.currentSpotlightId = presenterSocketId;
-      updateSpeakerViewLayout();
+      let presenterId = null;
+      if (presenterSocketId === state.socket?.id) {
+        presenterId = 'local';
+      } else {
+        const peer = state.peers.get(presenterSocketId);
+        if (peer && peer.info) {
+          presenterId = peer.info.participantId;
+        }
+      }
+      if (presenterId) {
+        state.currentSpotlightId = presenterId;
+        updateSpeakerViewLayout();
+      }
     }
     dom.annotationCanvas.classList.remove('hidden');
     dom.annotationCanvas.width = 1280;
