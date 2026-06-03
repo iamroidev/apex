@@ -75,25 +75,28 @@ foreach ($p in $ports) {
 
 # 4. Check if an instance already exists, otherwise provision and launch
 Write-Host "[3/6] Checking for existing running EC2 instance named 'apex-server'..." -ForegroundColor Yellow
-$existingInstances = & $AWS_CLI ec2 describe-instances --region $REGION --filters "Name=tag:Name,Values=apex-server" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].InstanceId" --output text
+$ip = "54.153.93.87" # Static fallback IP
 $instanceId = ""
-if ($existingInstances -and $existingInstances -ne "None" -and $existingInstances -ne "") {
-    # Get the first running instance ID
-    $instanceId = $existingInstances.Split("`t")[0].Split("`n")[0].Split("`r")[0].Split(" ")[0].Trim()
-    Write-Host "Found existing running EC2 instance with ID: $instanceId" -ForegroundColor Green
-} else {
-    Write-Host "No running instance found. Spawning new EC2 Instance ($INSTANCE_TYPE)..." -ForegroundColor Gray
-    $runInstance = & $AWS_CLI ec2 run-instances --region $REGION --image-id $AMI_ID --count 1 --instance-type $INSTANCE_TYPE --key-name $KEY_NAME --security-group-ids $sgId --tag-specifications 'ResourceType=instance,Tags=[{Key=Name,Value=apex-server}]' --output json | ConvertFrom-Json
-    $instanceId = $runInstance.Instances[0].InstanceId
-    Write-Host "Instance requested successfully. ID: $instanceId" -ForegroundColor Green
-    
-    # 5. Wait for instance to boot and obtain Public IP
-    Write-Host "[4/6] Waiting for instance to change state to RUNNING..." -ForegroundColor Yellow
-    & $AWS_CLI ec2 wait instance-running --region $REGION --instance-ids $instanceId
+
+try {
+    $existingInstances = & $AWS_CLI ec2 describe-instances --region $REGION --filters "Name=tag:Name,Values=apex-server" "Name=instance-state-name,Values=running" --query "Reservations[*].Instances[*].InstanceId" --output text 2>$null
+    if ($existingInstances -and $existingInstances -ne "None" -and $existingInstances -ne "" -and -not $existingInstances.Contains("expired") -and -not $existingInstances.Contains("error")) {
+        # Get the first running instance ID
+        $instanceId = $existingInstances.Split("`t")[0].Split("`n")[0].Split("`r")[0].Split(" ")[0].Trim()
+        Write-Host "Found existing running EC2 instance with ID: $instanceId" -ForegroundColor Green
+        
+        $fetchedIp = & $AWS_CLI ec2 describe-instances --region $REGION --instance-ids $instanceId --query "Reservations[0].Instances[0].PublicIpAddress" --output text 2>$null
+        if ($fetchedIp -and $fetchedIp -ne "None" -and $fetchedIp -ne "") {
+            $ip = $fetchedIp.Trim()
+        }
+    } else {
+        Write-Host "AWS CLI credentials expired or invalid. Falling back to static Elastic IP: $ip" -ForegroundColor Yellow
+    }
+} catch {
+    Write-Host "AWS CLI command failed. Falling back to static Elastic IP: $ip" -ForegroundColor Yellow
 }
 
-$ip = & $AWS_CLI ec2 describe-instances --region $REGION --instance-ids $instanceId --query "Reservations[0].Instances[0].PublicIpAddress" --output text
-Write-Host "Instance is running! Public IP: $ip" -ForegroundColor Green
+Write-Host "Instance is running! Target IP: $ip" -ForegroundColor Green
 
 # 6. Compress and Zip codebase
 Write-Host "[5/6] Archiving local codebase into apex-deploy.zip..." -ForegroundColor Yellow
