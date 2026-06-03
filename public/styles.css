@@ -1952,7 +1952,7 @@ body::before {
 
 /* ---- Single Screen Viewport Containment on Desktop ---- */
 @media (min-width: 860px) and (min-height: 680px) {
-  #view-landing {
+  #view-landing.active {
     height: 100vh;
     overflow: hidden;
     display: flex;
