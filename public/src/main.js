@@ -29,7 +29,11 @@ import {
   changeGalleryPage,
   copyInviteLink,
   copyScheduledLink,
-  updateHandIconsOnTiles
+  updateHandIconsOnTiles,
+  initFullscreenAndPip,
+  toggleCaptions,
+  toggleSelfMinimization,
+  initFocusMode
 } from './media.js';
 import { connectToRoom } from './webrtc.js';
 import { connectToLiveKit } from './livekit.js';
@@ -326,7 +330,31 @@ export async function joinMeeting(roomId) {
 }
 
 export async function enterMeeting(roomId) {
+  // Update URL to include the room ID so refreshes work!
+  const newUrl = window.location.origin + '/?join=' + roomId;
+  if (window.location.search !== '?join=' + roomId) {
+    window.history.pushState({ roomId }, '', newUrl);
+  }
+
   state.roomId = roomId;
+
+  // Query session details to restore host role and title
+  try {
+    const sessionRes = await fetch('/api/sessions/' + roomId);
+    if (sessionRes.ok) {
+      const data = await sessionRes.json();
+      const session = data.session || data.scheduled;
+      if (session) {
+        state.sessionData = session;
+        if (state.user && session.user_id === state.user.id) {
+          state.isHost = true;
+        }
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to query session host status:', e);
+  }
+
   state.role = state.isHost ? 'host' : 'participant';
   const name = state.userName || 'Participant';
   dom.meetingTitle.textContent = state.sessionData?.title || 'Meeting';
@@ -450,6 +478,13 @@ export async function leaveMeeting() {
 
   state.roomId = null;
   state.sessionData = null;
+
+  // Revert URL to clean state
+  const cleanUrl = window.location.origin + '/';
+  if (window.location.search) {
+    window.history.pushState(null, '', cleanUrl);
+  }
+
   showView('dashboard');
   loadUpcoming();
 }
@@ -820,6 +855,93 @@ async function parsePDF(file) {
   });
 }
 
+async function loadJSZip() {
+  if (window.JSZip) return window.JSZip;
+  return new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+    script.onload = () => resolve(window.JSZip);
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+}
+
+async function parsePPTX(file) {
+  const JSZip = await loadJSZip();
+  const fileReader = new FileReader();
+  return new Promise((resolve, reject) => {
+    fileReader.onload = async function() {
+      try {
+        const zip = await JSZip.loadAsync(this.result);
+        const images = [];
+        
+        // Find media images inside the pptx zip
+        const mediaFiles = [];
+        zip.forEach((relativePath, zipEntry) => {
+          if (relativePath.startsWith('ppt/media/') && /\.(png|jpe?g|gif|webp|svg)$/i.test(relativePath)) {
+            mediaFiles.push(zipEntry);
+          }
+        });
+        
+        // Sort files by name to maintain insertion order
+        mediaFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+        
+        for (const entry of mediaFiles) {
+          const blob = await entry.async('blob');
+          const dataUrl = await new Promise((res) => {
+            const r = new FileReader();
+            r.onload = () => res(r.result);
+            r.readAsDataURL(blob);
+          });
+          images.push(dataUrl);
+        }
+        
+        if (images.length === 0) {
+          // Fallback: extract text content slide by slide
+          const slideFiles = [];
+          zip.forEach((relativePath, zipEntry) => {
+            if (relativePath.startsWith('ppt/slides/slide') && relativePath.endsWith('.xml')) {
+              slideFiles.push(zipEntry);
+            }
+          });
+          slideFiles.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+          
+          const htmlSlides = [];
+          for (const entry of slideFiles) {
+            const text = await entry.async('string');
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(text, 'text/xml');
+            const texts = Array.from(xmlDoc.getElementsByTagName('a:t')).map(t => t.textContent).filter(Boolean);
+            
+            // Render text extract in a neat styled card
+            const slideHtml = `
+              <div style="padding: var(--sp-6); width: 100%; height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; background: var(--bg-surface); border: 2px solid var(--border-strong); box-shadow: var(--neo-shadow-md); overflow-y: auto;">
+                <div style="font-family: var(--font); font-size: var(--text-lg); font-weight: bold; color: var(--text-primary); max-width: 85%; line-height: 1.6;">
+                  ${texts.slice(0, 15).join('<br><br>')}
+                </div>
+              </div>
+            `;
+            htmlSlides.push(slideHtml);
+          }
+          
+          if (htmlSlides.length > 0) {
+            resolve(htmlSlides);
+            return;
+          }
+          
+          throw new Error("No slide media or text content found inside the PPTX file.");
+        }
+        
+        resolve(images);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    fileReader.onerror = reject;
+    fileReader.readAsArrayBuffer(file);
+  });
+}
+
 async function parseImages(files) {
   const sortedFiles = Array.from(files).sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
   const images = [];
@@ -904,14 +1026,14 @@ function showSlidesSourceModal() {
   box.style.maxWidth = '460px';
   box.innerHTML = `
     <h3 class="modal-title" style="font-family:'Space Grotesk',sans-serif;font-weight:700;margin-bottom:var(--sp-4);">Share Slides</h3>
-    <p style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:var(--sp-5);line-height:1.5;">Choose whether to present the default demo slide deck or upload your own PDF or presentation images.</p>
+    <p style="font-size:var(--text-xs);color:var(--text-secondary);margin-bottom:var(--sp-5);line-height:1.5;">Choose whether to present the default demo slide deck or upload your own PDF, PPTX presentation, or images.</p>
     
     <div style="display:flex;flex-direction:column;gap:var(--sp-3);margin-bottom:var(--sp-4);">
       <button class="btn btn-ghost" id="btn-use-demo-deck" style="width:100%;text-align:center;height:40px;">Use Demo Slides</button>
-      <button class="btn btn-primary" id="btn-upload-custom-deck" style="width:100%;text-align:center;height:40px;">Upload PDF or Images...</button>
+      <button class="btn btn-primary" id="btn-upload-custom-deck" style="width:100%;text-align:center;height:40px;">Upload PDF, PPTX or Images...</button>
     </div>
     
-    <input type="file" id="custom-slides-file" accept="application/pdf, image/*" multiple style="display:none;">
+    <input type="file" id="custom-slides-file" accept="application/pdf, image/*, .pptx, application/vnd.openxmlformats-officedocument.presentationml.presentation" multiple style="display:none;">
     
     <div id="slides-loading-status" class="hidden" style="font-size:var(--text-xs);color:var(--accent-cyan);text-align:center;font-weight:bold;margin-bottom:var(--sp-2);">
       Processing files... Please wait.
@@ -950,10 +1072,15 @@ function showSlidesSourceModal() {
 
     try {
       let customSlides = [];
-      const hasPdf = Array.from(files).some(f => f.type === 'application/pdf');
+      const fileList = Array.from(files);
+      const hasPdf = fileList.some(f => f.type === 'application/pdf');
+      const hasPptx = fileList.some(f => f.name.toLowerCase().endsWith('.pptx') || f.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
 
-      if (hasPdf) {
-        const pdfFile = Array.from(files).find(f => f.type === 'application/pdf');
+      if (hasPptx) {
+        const pptxFile = fileList.find(f => f.name.toLowerCase().endsWith('.pptx') || f.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation');
+        customSlides = await parsePPTX(pptxFile);
+      } else if (hasPdf) {
+        const pdfFile = fileList.find(f => f.type === 'application/pdf');
         customSlides = await parsePDF(pdfFile);
       } else {
         customSlides = await parseImages(files);
@@ -1064,17 +1191,22 @@ export function updateSlidesControlUI() {
 }
 
 export function renderSlide() {
-  // If sharing custom deck of images (from uploaded PDF or selected images)
+  // If sharing custom deck of images or HTML slides
   if (state.customSlides && state.customSlides[state.currentSlideIndex]) {
-    const slideImg = state.customSlides[state.currentSlideIndex];
+    const slideContent = state.customSlides[state.currentSlideIndex];
     dom.slidesTitle.textContent = "Presentation: Custom Slides";
     dom.slidesCounter.textContent = `Slide ${state.currentSlideIndex + 1} of ${state.customSlides.length}`;
     
-    dom.slidesContentContainer.innerHTML = `
-      <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
-        <img src="${slideImg}" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid var(--border-strong); box-shadow: var(--neo-shadow-sm); background: #ffffff;" />
-      </div>
-    `;
+    // Check if the slide is HTML text (starts with '<div' or contains markup)
+    if (typeof slideContent === 'string' && slideContent.trim().startsWith('<div')) {
+      dom.slidesContentContainer.innerHTML = slideContent;
+    } else {
+      dom.slidesContentContainer.innerHTML = `
+        <div style="width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+          <img src="${slideContent}" style="max-width: 100%; max-height: 100%; object-fit: contain; border: 2px solid var(--border-strong); box-shadow: var(--neo-shadow-sm); background: #ffffff;" />
+        </div>
+      `;
+    }
     return;
   }
 
@@ -1118,6 +1250,27 @@ export function muteParticipant(socketId) {
 export function kickParticipant(socketId) {
   if (!hasModPowers()) return;
   state.socket.emit('kick-participant', { roomId: state.roomId, targetSocketId: socketId });
+}
+
+export function lowerParticipantHand(participantId) {
+  if (!hasModPowers()) return;
+  state.socket.emit('lower-hand', { roomId: state.roomId, targetParticipantId: participantId });
+}
+
+export function stopParticipantVideo(socketId) {
+  if (!hasModPowers()) return;
+  state.socket.emit('stop-video-participant', { roomId: state.roomId, targetSocketId: socketId });
+}
+
+export function toggleDockFloat() {
+  state.sidePanelFloating = !state.sidePanelFloating;
+  dom.sidePanel.classList.toggle('floating-mode', state.sidePanelFloating);
+  dom.viewMeeting.classList.toggle('side-panel-floating', state.sidePanelFloating);
+  
+  if (dom.btnDockFloatToggle) {
+    dom.btnDockFloatToggle.textContent = state.sidePanelFloating ? 'Dock' : 'Float';
+    dom.btnDockFloatToggle.classList.toggle('active', state.sidePanelFloating);
+  }
 }
 
 export function muteBot(botId) {
@@ -1409,6 +1562,20 @@ export function updateParticipantsList() {
           `;
         }
       }
+      if (qIdx !== -1) {
+        actionButtons += `
+          <button class="btn-mod mod-lower-hand" onclick="window._apex.lowerParticipantHand('${p.participantId}')" style="background: var(--accent-cyan-dim); color: var(--accent-cyan); font-size: 9px; padding: 2px 4px; margin-right: 2px;">
+            Lower Hand
+          </button>
+        `;
+      }
+      if (!p.bot) {
+        actionButtons += `
+          <button class="btn-mod mod-stop-video" onclick="window._apex.stopParticipantVideo('${p.socketId}')" style="background: var(--accent-coral-dim); color: var(--accent-coral); font-size: 9px; padding: 2px 4px; margin-right: 2px;">
+            Stop Video
+          </button>
+        `;
+      }
       actionButtons += `</div>`;
     }
 
@@ -1497,6 +1664,67 @@ export function bindNewInMeetingFeatures() {
   // Breakout CSV & Self-Select
   dom.breakoutCsvFile.addEventListener('change', handleBreakoutCsvUpload);
   dom.breakoutParticipantCloseBtn.addEventListener('click', () => dom.modalBreakoutParticipant.classList.add('hidden'));
+
+  // Initialize Fullscreen and Picture-in-Picture event listeners
+  initFullscreenAndPip();
+
+  // Double click to toggle fullscreen on video tiles or presentation overlay
+  document.addEventListener('dblclick', (e) => {
+    const tile = e.target.closest('.video-tile');
+    if (tile) {
+      if (!document.fullscreenElement) {
+        tile.requestFullscreen().catch(err => console.warn(err));
+      } else {
+        document.exitFullscreen().catch(err => console.warn(err));
+      }
+      return;
+    }
+
+    const slidesOverlay = e.target.closest('#slides-overlay');
+    if (slidesOverlay) {
+      if (e.target.closest('.wb-overlay-header') || e.target.closest('button')) return;
+      if (!document.fullscreenElement) {
+        slidesOverlay.requestFullscreen().catch(err => console.warn(err));
+      } else {
+        document.exitFullscreen().catch(err => console.warn(err));
+      }
+    }
+  });
+
+  // Closed Captions, Focus Mode, Self-Minimization and Sidebar docking
+  if (dom.btnCaptionsToggle) {
+    dom.btnCaptionsToggle.addEventListener('click', toggleCaptions);
+  }
+  if (dom.btnDockFloatToggle) {
+    dom.btnDockFloatToggle.addEventListener('click', toggleDockFloat);
+  }
+  if (dom.btnLocalMinimize) {
+    dom.btnLocalMinimize.addEventListener('click', toggleSelfMinimization);
+  }
+  if (dom.localTile) {
+    dom.localTile.addEventListener('dblclick', toggleSelfMinimization);
+  }
+  if (dom.breakoutBroadcastBtn) {
+    dom.breakoutBroadcastBtn.addEventListener('click', () => {
+      const msg = dom.breakoutBroadcastInput.value.trim();
+      if (!msg) return;
+      state.socket.emit('breakout-broadcast-message', {
+        roomId: state.roomId,
+        message: msg,
+        roomCount: state.breakoutRoomsCount
+      });
+      dom.breakoutBroadcastInput.value = '';
+      if (dom.breakoutBroadcastStatus) {
+        dom.breakoutBroadcastStatus.textContent = 'Broadcast sent!';
+        setTimeout(() => {
+          dom.breakoutBroadcastStatus.textContent = '';
+        }, 3000);
+      }
+    });
+  }
+
+  // Initialize focus mode
+  initFocusMode();
 
   // Chat Permissions Selector
   dom.chatPermissionsSelect.addEventListener('change', (e) => {
@@ -1674,22 +1902,54 @@ async function init() {
   // Initialize Google Authentication Sign-In
   initGoogleAuth();
 
+  // Handle browser back/forward history navigation (popstate)
+  window.addEventListener('popstate', (e) => {
+    const params = new URLSearchParams(window.location.search);
+    const room = params.get('join') || params.get('room');
+    if (room) {
+      if (state.roomId !== room) {
+        enterMeeting(room);
+      }
+    } else {
+      if (state.roomId) {
+        leaveMeeting();
+      }
+    }
+  });
+
   // Check Auth Session on startup
   try {
     const res = await fetch('/api/auth/session');
     const data = await res.json();
+    const savedName = localStorage.getItem('apexDisplayName');
+
     if (data.user) {
       state.user = data.user;
       state.userName = data.user.username;
       dom.dashUsernameDisplay.textContent = data.user.username;
       updateDashboardAvatar();
-      showView('dashboard');
-      loadUpcoming();
+
+      if (inviteRoom) {
+        enterMeeting(inviteRoom);
+      } else {
+        showView('dashboard');
+        loadUpcoming();
+      }
+    } else {
+      if (inviteRoom && savedName) {
+        state.userName = savedName;
+        enterMeeting(inviteRoom);
+      } else {
+        showView('landing');
+      }
+    }
+  } catch (e) {
+    if (inviteRoom && localStorage.getItem('apexDisplayName')) {
+      state.userName = localStorage.getItem('apexDisplayName');
+      enterMeeting(inviteRoom);
     } else {
       showView('landing');
     }
-  } catch (e) {
-    showView('landing');
   }
 }
 
@@ -1710,7 +1970,9 @@ window._apex = {
   viewSessionDetails,
   togglePeerSlideControl,
   joinSelfSelectedBreakout,
-  askToUnmute
+  askToUnmute,
+  lowerParticipantHand,
+  stopParticipantVideo
 };
 
 document.addEventListener('DOMContentLoaded', init);

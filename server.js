@@ -9,7 +9,10 @@ const db = require('./database');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, { cors: { origin: '*' } });
+const io = new Server(server, { 
+  cors: { origin: '*' },
+  maxHttpBufferSize: 1e8
+});
 
 const PORT = process.env.PORT || 3000;
 const LK_KEY = process.env.LIVEKIT_API_KEY || '';
@@ -248,6 +251,24 @@ app.post('/api/sessions/:id/end', authenticate, (req, res) => {
   }
 });
 
+// Get Session/Scheduled Details (Publicly accessible for clients to determine host/title)
+app.get('/api/sessions/:id', (req, res) => {
+  try {
+    const session = db.getSession(req.params.id);
+    if (session) {
+      return res.json({ session });
+    }
+    // If not found in active sessions, check scheduled meetings
+    const scheduled = db.getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(req.params.id);
+    if (scheduled) {
+      return res.json({ scheduled });
+    }
+    res.status(404).json({ error: 'Session not found' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Attendance (Authenticated)
 app.get('/api/sessions/:id/attendance', authenticate, (req, res) => {
   res.json(db.getAttendance(req.params.id));
@@ -429,6 +450,18 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Speech closed captions forwarding
+  socket.on('speech-transcription', ({ roomId, text, final }) => {
+    const room = rooms.get(roomId);
+    const pInfo = room ? room.get(socket.id) : null;
+    socket.to(roomId).emit('speech-transcription-broadcast', {
+      senderId: socket.id,
+      senderName: pInfo ? pInfo.displayName : 'Participant',
+      text,
+      final
+    });
+  });
+
   // Reactions
   socket.on('reaction', ({ roomId, emoji, senderName }) => {
     socket.to(roomId).emit('reaction', { emoji, senderName });
@@ -499,6 +532,11 @@ io.on('connection', (socket) => {
       io.to(roomId).emit('hand-raise-queue-changed', queue);
     }
     io.to(roomId).emit('hand-raise', { participantId: targetParticipantId, raised: false });
+  });
+
+  socket.on('stop-video-participant', ({ roomId, targetSocketId }) => {
+    if (!hasModPowers(roomId, socket.id)) return;
+    io.to(targetSocketId).emit('stop-video-command');
   });
 
   // Security toggles
@@ -629,6 +667,14 @@ io.on('connection', (socket) => {
     if (!hasModPowers(roomId, socket.id)) return;
     for (let i = 1; i <= roomCount; i++) {
       io.to(`${roomId}-breakout-${i}`).emit('breakout-ended');
+    }
+  });
+
+  socket.on('breakout-broadcast-message', ({ roomId, message, roomCount }) => {
+    if (!hasModPowers(roomId, socket.id)) return;
+    io.to(roomId).emit('breakout-broadcast-received', { message });
+    for (let i = 1; i <= roomCount; i++) {
+      io.to(`${roomId}-breakout-${i}`).emit('breakout-broadcast-received', { message });
     }
   });
 

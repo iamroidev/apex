@@ -703,7 +703,8 @@ body::before {
 .meeting-layout {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
+  height: 100dvh;
   background: var(--bg-base);
 }
 
@@ -930,6 +931,49 @@ body::before {
   background: var(--accent-cyan);
   border-radius: 1px;
   transition: height 100ms var(--ease);
+}
+
+/* Picture in Picture tile overlay button */
+.tile-pip-btn {
+  position: absolute;
+  top: var(--sp-2);
+  left: var(--sp-2);
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+  box-shadow: var(--neo-shadow-sm);
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.video-tile:hover .tile-pip-btn {
+  opacity: 1;
+}
+.tile-pip-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.9);
+}
+.tile-pip-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Fullscreen support styling */
+#view-meeting:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background: var(--bg-base);
+}
+#view-meeting:fullscreen .meeting-layout {
+  height: 100vh;
 }
 
 /* ============================================================
@@ -2953,6 +2997,154 @@ body::before {
 .dropdown-item svg {
   flex-shrink: 0;
   stroke: currentColor;
+}
+
+/* ============================================================
+   GAP BRIDGING & CRAMPED UI RESOLUTION STYLES
+   ============================================================ */
+
+/* Closed Captions Overlay styling */
+.captions-overlay {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  background: rgba(4, 5, 8, 0.85);
+  border: 2px solid var(--border-strong);
+  box-shadow: var(--neo-shadow-sm);
+  padding: var(--sp-2) var(--sp-4);
+  color: var(--accent-cyan);
+  font-family: var(--font);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  max-width: 80%;
+  pointer-events: none;
+  transition: opacity var(--dur) var(--ease);
+}
+
+/* Focus Mode for Immersive View (Auto-Hiding Header/Footer) */
+#view-meeting {
+  transition: padding var(--dur) var(--ease);
+}
+#view-meeting.focus-mode .meeting-header {
+  margin-top: -64px;
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+#view-meeting.focus-mode .control-bar {
+  margin-bottom: -72px;
+  transform: translateY(100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.meeting-header, .control-bar {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Floating Side Panel Style */
+.side-panel.floating-mode {
+  position: absolute;
+  top: 80px;
+  right: var(--sp-4);
+  bottom: 96px;
+  height: auto;
+  width: 320px;
+  background: rgba(14, 17, 27, 0.85) !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 2px solid var(--border-strong) !important;
+  box-shadow: var(--neo-shadow-lg) !important;
+  z-index: 120;
+}
+.side-panel.floating-mode.hidden {
+  transform: translateX(120%);
+  margin-right: 0;
+  display: none !important;
+}
+#view-meeting.side-panel-open.side-panel-floating .meeting-body {
+  margin-right: 0;
+}
+#view-meeting.side-panel-open.side-panel-floating .side-panel {
+  margin-right: 0;
+}
+
+/* Self Video Minimization styling */
+.video-tile.local-minimized {
+  position: absolute !important;
+  bottom: 96px;
+  right: var(--sp-4);
+  width: 140px;
+  height: 90px;
+  z-index: 90;
+  box-shadow: var(--neo-shadow-md);
+  border: 2px solid var(--accent-cyan);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.video-tile.local-minimized video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Local Video Minimize Button styling */
+.tile-min-btn {
+  position: absolute;
+  top: var(--sp-2);
+  left: 36px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-strong);
+  color: var(--text-secondary);
+  box-shadow: var(--neo-shadow-sm);
+  cursor: pointer;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity var(--dur) var(--ease), color var(--dur) var(--ease), background var(--dur) var(--ease), transform var(--dur) var(--ease), box-shadow var(--dur) var(--ease);
+}
+.video-tile:hover .tile-min-btn {
+  opacity: 1;
+}
+.tile-min-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  transform: translate(-1px, -1px);
+  box-shadow: 3px 3px 0px rgba(0, 0, 0, 0.9);
+}
+.tile-min-btn:active {
+  transform: translate(1px, 1px);
+  box-shadow: none;
+}
+
+/* Floating Announcement Toast */
+.announcement-toast {
+  position: fixed;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  background: var(--bg-surface);
+  border: 2px solid var(--accent-gold);
+  box-shadow: var(--neo-shadow-gold);
+  padding: var(--sp-3) var(--sp-6);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: var(--text-base);
+  font-weight: 600;
+  text-align: center;
+  max-width: 80%;
+  animation: toast-glow 2s infinite ease-in-out alternate;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+@keyframes toast-glow {
+  0% { box-shadow: var(--neo-shadow-sm); }
+  100% { box-shadow: 4px 4px 12px var(--accent-gold); }
 }
 
 

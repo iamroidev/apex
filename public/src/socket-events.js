@@ -4,7 +4,7 @@ import { addRemotePeer, removeRemotePeer, createOffer, handleOffer } from './web
 import { appendChatMessage } from './chat.js';
 import { drawRemotePath, clearWhiteboard, redrawWhiteboard } from './whiteboard.js';
 import { spawnFloatingReaction } from './ui.js';
-import { handleRemoteHandRaise, updateHandIconsOnTiles, toggleMic, getCSSFilter } from './media.js';
+import { handleRemoteHandRaise, updateHandIconsOnTiles, toggleMic, toggleCam, displayCaption, getCSSFilter } from './media.js';
 import { handlePollCreated, handlePollVoted, handlePollEnded } from './polling.js';
 import { handleBreakoutAssigned, handleBreakoutEnded, openBreakoutSelectionModal } from './breakout.js';
 import { drawStroke, clearAnnotations, startPresenterOverlayLoop, stopPresenterOverlayLoop } from './overlay.js';
@@ -311,6 +311,26 @@ export function bindSocketEvents() {
 
   s.on('unmute-request-prompt', () => {
     dom.modalUnmutePrompt.classList.remove('hidden');
+  });
+
+  s.on('stop-video-command', () => {
+    if (state.camEnabled) {
+      toggleCam();
+    }
+  });
+
+  s.on('breakout-broadcast-received', ({ message }) => {
+    if (!dom.announcementToast) return;
+    dom.announcementToast.textContent = message;
+    dom.announcementToast.classList.remove('hidden');
+    if (window._announcementTimeout) clearTimeout(window._announcementTimeout);
+    window._announcementTimeout = setTimeout(() => {
+      dom.announcementToast.classList.add('hidden');
+    }, 10000);
+  });
+
+  s.on('speech-transcription-broadcast', ({ senderName, text }) => {
+    displayCaption(senderName, text);
   });
 
   // Whiteboard persistence

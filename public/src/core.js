@@ -121,7 +121,11 @@ export const state = {
   handRaiseQueue: [],
   chatPermissions: 'public-private',
   galleryPage: 0,
-  participantsSearchQuery: ''
+  participantsSearchQuery: '',
+  autoPipVideo: null,
+  captionsEnabled: false,
+  isLocalMinimized: false,
+  sidePanelFloating: false
 };
 
 export const dom = {
@@ -182,6 +186,7 @@ export const dom = {
   videoGrid: $('#video-grid'),
   localVideo: $('#local-video'),
   localTile: $('#local-tile'),
+  btnLocalMinimize: $('#btn-local-minimize'),
   localNameLabel: $('#local-name-label'),
   localSpeaking: $('#local-speaking'),
   localAvatar: $('#local-avatar'),
@@ -198,14 +203,20 @@ export const dom = {
   btnReactions: $('#btn-reactions'),
   btnHand: $('#btn-hand'),
   btnLeave: $('#btn-leave'),
+  btnPipToggle: $('#btn-pip-toggle'),
+  btnFullscreenToggle: $('#btn-fullscreen-toggle'),
+  btnCaptionsToggle: $('#btn-captions-toggle'),
   controlRoomCode: $('#control-room-code'),
 
   // Side panel
   sidePanel: $('#side-panel'),
   panelClose: $('#panel-close'),
   panelTabs: $$('.panel-tab'),
+  btnDockFloatToggle: $('#btn-dock-float-toggle'),
   tabChat: $('#tab-chat'),
   tabParticipants: $('#tab-participants'),
+  captionsOverlay: $('#captions-overlay'),
+  announcementToast: $('#announcement-toast'),
   wbOverlay: $('#wb-overlay'),
   wbClose: $('#wb-close'),
 
@@ -303,6 +314,9 @@ export const dom = {
   breakoutEndBtn: $('#breakout-end-btn'),
   breakoutSetupView: $('#breakout-setup-view'),
   breakoutActiveView: $('#breakout-active-view'),
+  breakoutBroadcastInput: $('#breakout-broadcast-input'),
+  breakoutBroadcastBtn: $('#breakout-broadcast-btn'),
+  breakoutBroadcastStatus: $('#breakout-broadcast-status'),
 
   // Host polling control
   btnMuteAll: $('#btn-mute-all'),

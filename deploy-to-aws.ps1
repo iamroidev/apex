@@ -104,7 +104,7 @@ $zipPath = Join-Path $WORKSPACE "apex-deploy.zip"
 if (Test-Path $zipPath) { Remove-Item $zipPath -Force }
 
 # Find all items except node_modules, git assets, pem keys, zip itself, and this PS script
-$files = Get-ChildItem -Path $WORKSPACE -Exclude "node_modules", ".git", "apex.db", "apex.db-shm", "apex.db-wal", "apex-key.pem", "apex-deploy.zip", "deploy-to-aws.ps1", "awscliv2.zip"
+$files = Get-ChildItem -Path $WORKSPACE -Exclude "node_modules", ".git", "apex.db", "apex.db-shm", "apex.db-wal", "apex-key.pem", "apex-deploy.zip", "deploy-to-aws.ps1", "awscliv2.zip", ".env"
 Compress-Archive -Path $files.FullName -DestinationPath $zipPath -Force
 Write-Host "Created deployment zip archive at: $zipPath" -ForegroundColor Green
 
