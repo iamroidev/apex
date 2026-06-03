@@ -390,11 +390,19 @@ export async function loadUpcoming() {
 }
 
 export function renderUpcoming(meetings) {
-  if (!meetings.length) {
+  const now = Date.now();
+  // Filter out meetings where the scheduled start time + duration has already passed
+  const activeMeetings = meetings.filter(m => {
+    const dt = new Date(m.scheduled_for);
+    const endTime = dt.getTime() + (m.duration_minutes || 60) * 60 * 1000;
+    return endTime > now;
+  });
+
+  if (!activeMeetings.length) {
     dom.upcomingList.innerHTML = '<p class="empty-state">No scheduled meetings</p>';
     return;
   }
-  dom.upcomingList.innerHTML = meetings.map(m => {
+  dom.upcomingList.innerHTML = activeMeetings.map(m => {
     const dt = new Date(m.scheduled_for);
     const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
     const timeStr = dt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
