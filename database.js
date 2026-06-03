@@ -34,7 +34,9 @@ function initTables() {
       started_at TEXT,
       ended_at TEXT,
       recording_path TEXT,
-      is_active INTEGER NOT NULL DEFAULT 1
+      is_active INTEGER NOT NULL DEFAULT 1,
+      password TEXT,
+      recurrence TEXT
     );
 
     CREATE TABLE IF NOT EXISTS attendance (
@@ -66,7 +68,9 @@ function initTables() {
       scheduled_for TEXT NOT NULL,
       duration_minutes INTEGER DEFAULT 60,
       host_name TEXT NOT NULL DEFAULT 'Host',
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      password TEXT,
+      recurrence TEXT
     );
 
     CREATE TABLE IF NOT EXISTS whiteboard_paths (
@@ -79,13 +83,11 @@ function initTables() {
   `);
 
   // Schema migrations for user_id addition
-  try {
-    db.exec(`ALTER TABLE sessions ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL`);
-  } catch (e) { /* already migrated */ }
-
-  try {
-    db.exec(`ALTER TABLE scheduled_meetings ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL`);
-  } catch (e) { /* already migrated */ }
+  for (const table of ['sessions', 'scheduled_meetings']) {
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN user_id TEXT REFERENCES users(id) ON DELETE SET NULL`); } catch (e) { /* already migrated */ }
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN password TEXT`); } catch (e) { /* already migrated */ }
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN recurrence TEXT`); } catch (e) { /* already migrated */ }
+  }
 }
 
 // --- Hashing Helpers ---
@@ -122,11 +124,11 @@ function getUserById(id) {
 
 // --- Session helpers ---
 
-function createSession(id, title, hostName, userId = null) {
+function createSession(id, title, hostName, userId = null, password = null, recurrence = null) {
   const stmt = getDb().prepare(
-    `INSERT INTO sessions (id, title, host_name, user_id, started_at) VALUES (?, ?, ?, ?, datetime('now'))`
+    `INSERT INTO sessions (id, title, host_name, user_id, password, recurrence, started_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
   );
-  stmt.run(id, title, hostName, userId);
+  stmt.run(id, title, hostName, userId, password, recurrence);
   return getSession(id);
 }
 
@@ -206,10 +208,10 @@ function getScheduledMeeting(id) {
 
 // --- Scheduled meetings ---
 
-function scheduleMeeting(id, title, description, scheduledFor, durationMinutes, hostName, userId = null) {
+function scheduleMeeting(id, title, description, scheduledFor, durationMinutes, hostName, userId = null, password = null, recurrence = null) {
   getDb().prepare(
-    `INSERT INTO scheduled_meetings (id, title, description, scheduled_for, duration_minutes, host_name, user_id) VALUES (?, ?, ?, ?, ?, ?, ?)`
-  ).run(id, title, description || '', scheduledFor, durationMinutes || 60, hostName || 'Host', userId);
+    `INSERT INTO scheduled_meetings (id, title, description, scheduled_for, duration_minutes, host_name, user_id, password, recurrence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(id, title, description || '', scheduledFor, durationMinutes || 60, hostName || 'Host', userId, password, recurrence);
   return getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(id);
 }
 

@@ -56,6 +56,9 @@ LIVEKIT_WS_URL=ws://${PUBLIC_IP}:7880
 # Google OAuth Credentials
 GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
 GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+
+# CORS Allowed Origins — comma-separated, or * for development
+ALLOWED_ORIGINS=*
 EOF
 else
     echo "Existing .env file found. Preserving config."
@@ -64,6 +67,10 @@ else
     fi
     if [ ! -z "$GOOGLE_CLIENT_SECRET" ]; then
         sed -i "s|^GOOGLE_CLIENT_SECRET=.*|GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}|g" ~/apex/.env
+    fi
+    # Add ALLOWED_ORIGINS if not present in existing env
+    if ! grep -q "^ALLOWED_ORIGINS=" ~/apex/.env; then
+        echo "ALLOWED_ORIGINS=*" >> ~/apex/.env
     fi
 fi
 

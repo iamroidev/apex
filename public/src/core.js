@@ -12,6 +12,7 @@ export const state = {
   roomId: null,
   sessionData: null,
   isHost: false,
+  hostKey: null,         // Host key for reclaiming host
 
   // Media
   localStream: null,
@@ -19,6 +20,7 @@ export const state = {
   micEnabled: true,
   camEnabled: true,
   isSharingScreen: false,
+  virtualBackground: { type: 'none', value: null },
 
   // Recording
   mediaRecorder: null,
@@ -59,11 +61,11 @@ export const state = {
   livekitRoom: null,
   livekitConnected: false,
 
-  // Peers (for real WebRTC)
-  peers: new Map(), // socketId -> { pc, stream, info }
+  // Peers
+  peers: new Map(),
 
   // Layout
-  layoutMode: 'grid', // 'grid' | 'speaker'
+  layoutMode: 'grid',
   pinnedParticipantId: null,
 
   // Breakouts
@@ -82,7 +84,7 @@ export const state = {
 
   // Waiting Room & Security
   isWaitingToJoin: false,
-  waitingQueue: [], // { socketId, participantId, displayName }
+  waitingQueue: [],
   isRoomLocked: false,
   isWaitingRoomEnabled: false,
 
@@ -138,7 +140,11 @@ export const state = {
   isBrb: false,
   wbLaserActive: false,
   vanishingPaths: [],
-  individualVolumes: {}
+  individualVolumes: {},
+  spotlightSocketIds: [],
+  meetingPassword: null,
+  meetingRecurrence: null,
+  analytics: null
 };
 
 export const dom = {
@@ -407,6 +413,21 @@ export const dom = {
   btnWbLaser: $('#btn-wb-laser'),
   btnMuteAllExceptPresenter: $('#btn-mute-all-except-presenter'),
   btnBrb: $('#btn-brb'),
+
+  // NEW: Password & Recurrence & End Meeting
+  passwordModal: $('#modal-password'),
+  passwordInput: $('#password-input'),
+  passwordSubmit: $('#password-submit'),
+  passwordCancel: $('#password-cancel'),
+  passwordError: $('#password-error'),
+  schedPassword: $('#sched-password'),
+  schedRecurrence: $('#sched-recurrence'),
+  btnEndMeetingAll: $('#btn-end-meeting-all'),
+  meetingPasswordBadge: $('#meeting-password-badge'),
+  hostKeyDisplay: $('#host-key-display'),
+  analyticsSection: $('#analytics-section'),
+  analyticsContent: $('#analytics-content'),
+  meetingPasswordInput: $('#meeting-password-input')
 };
 
 export function genId() {
@@ -438,9 +459,7 @@ export function playVoicePrompt(text) {
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       window.speechSynthesis.speak(utterance);
-    } catch (e) {
-      console.warn('SpeechSynthesis failed:', e);
-    }
+    } catch (e) { console.warn('SpeechSynthesis failed:', e); }
   }
 }
 
