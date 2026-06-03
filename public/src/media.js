@@ -4,6 +4,11 @@ import { createLiveKitTile } from './livekit.js';
 import { createRemoteTile, connectToRoom } from './webrtc.js';
 import { onScreenShareActive } from './main.js'; // imported from main.js orchestrator
 
+let activeAnalysisCtx = null;
+let activeAnalysisTrack = null;
+let activeAnalysisFrameId = null;
+
+
 export async function initMedia() {
   try {
     const videoConstraints = state.selectedCameraId 
@@ -69,6 +74,9 @@ export function showMutedSpeechToast() {
     gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.25);
     osc.start();
     osc.stop(audioCtx.currentTime + 0.25);
+    setTimeout(() => {
+      audioCtx.close().catch(() => {});
+    }, 350);
   } catch (e) {}
 
   setTimeout(() => {
@@ -86,11 +94,28 @@ export function startLocalAudioAnalysis() {
   const audioTracks = state.localStream.getAudioTracks();
   if (!audioTracks.length) return;
 
+  // Clean up any existing active analysis first to prevent leaks
+  if (activeAnalysisFrameId) {
+    cancelAnimationFrame(activeAnalysisFrameId);
+    activeAnalysisFrameId = null;
+  }
+  if (activeAnalysisTrack) {
+    activeAnalysisTrack.stop();
+    activeAnalysisTrack = null;
+  }
+  if (activeAnalysisCtx) {
+    activeAnalysisCtx.close().catch(() => {});
+    activeAnalysisCtx = null;
+  }
+
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     // Clone the local mic track so it stays enabled for local analysis even when state.localStream audio is muted
     const analysisTrack = audioTracks[0].clone();
     analysisTrack.enabled = true;
+    
+    activeAnalysisCtx = ctx;
+    activeAnalysisTrack = analysisTrack;
     
     const analysisStream = new MediaStream([analysisTrack]);
     const source = ctx.createMediaStreamSource(analysisStream);
@@ -137,9 +162,9 @@ export function startLocalAudioAnalysis() {
         talkingMutedFrames = 0;
       }
 
-      requestAnimationFrame(check);
+      activeAnalysisFrameId = requestAnimationFrame(check);
     }
-    check();
+    activeAnalysisFrameId = requestAnimationFrame(check);
   } catch (err) {
     console.warn('Failed to start local audio analysis:', err);
   }

@@ -130,6 +130,15 @@ export async function handleOffer(fromSocketId, offer) {
   };
 
   await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  
+  // Drain buffered candidates if any arrived during handleOffer initialization
+  if (peer.iceBuffer && peer.iceBuffer.length) {
+    peer.iceBuffer.forEach(async (cand) => {
+      try { await pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+    });
+    peer.iceBuffer = [];
+  }
+
   const answer = await pc.createAnswer();
   await pc.setLocalDescription(answer);
   state.socket.emit('signal-answer', { targetSocketId: fromSocketId, answer });

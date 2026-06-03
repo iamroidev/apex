@@ -336,6 +336,42 @@ io.on('connection', (socket) => {
   let participantInfo = null;
 
   socket.on('join-room', ({ roomId, participantId, displayName, role }) => {
+    // SEC-01: Verify role if host or cohost
+    let verifiedRole = 'participant';
+    if (role === 'host' || role === 'cohost') {
+      const cookieHeader = socket.handshake.headers.cookie || '';
+      const token = cookieHeader.split(';').reduce((acc, cookie) => {
+        const parts = cookie.split('=');
+        if (parts[0].trim() === 'apex_session') return parts.slice(1).join('=').trim();
+        return acc;
+      }, null);
+
+      const verifiedUser = verifyToken(token);
+      
+      // Query ownership from SQLite database
+      let session = null;
+      try { session = db.getSession(roomId); } catch (e) {}
+      let scheduled = null;
+      try { scheduled = db.getDb().prepare('SELECT user_id FROM scheduled_meetings WHERE id = ?').get(roomId); } catch (e) {}
+
+      if (session || scheduled) {
+        const ownerId = session?.user_id || scheduled?.user_id;
+        if (ownerId && verifiedUser && ownerId === verifiedUser.userId) {
+          verifiedRole = role; // Authenticated owner
+        } else {
+          verifiedRole = 'participant'; // Mismatch or unauthenticated guest
+        }
+      } else {
+        // Sandbox fallback room (no DB record exists)
+        verifiedRole = role || 'participant';
+      }
+    } else {
+      verifiedRole = role || 'participant';
+    }
+
+    // Overwrite parameter for subsequent checks
+    role = verifiedRole;
+
     // If room is locked and user is not host, reject
     if (lockedRooms.has(roomId) && role !== 'host') {
       socket.emit('room-locked-error', { roomId });

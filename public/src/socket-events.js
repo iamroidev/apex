@@ -60,6 +60,13 @@ export function bindSocketEvents() {
       const peer = state.peers.get(fromSocketId);
       if (peer && peer.pc) {
         await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+        // Drain buffered candidates
+        if (peer.iceBuffer && peer.iceBuffer.length) {
+          peer.iceBuffer.forEach(async (cand) => {
+            try { await peer.pc.addIceCandidate(new RTCIceCandidate(cand)); } catch (e) {}
+          });
+          peer.iceBuffer = [];
+        }
       }
     }
   });
@@ -68,7 +75,12 @@ export function bindSocketEvents() {
     if (state.sandboxMode) {
       const peer = state.peers.get(fromSocketId);
       if (peer && peer.pc) {
-        try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { /* ok */ }
+        if (!peer.pc.remoteDescription) {
+          if (!peer.iceBuffer) peer.iceBuffer = [];
+          peer.iceBuffer.push(candidate);
+        } else {
+          try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (e) { /* ok */ }
+        }
       }
     }
   });
