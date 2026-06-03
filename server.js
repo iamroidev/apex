@@ -5,12 +5,15 @@ const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
+const rateLimit = require('express-rate-limit');
 const db = require('./database');
 
 const app = express();
 const server = http.createServer(app);
+
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*';
 const io = new Server(server, { 
-  cors: { origin: '*' },
+  cors: { origin: ALLOWED_ORIGINS === '*' ? '*' : ALLOWED_ORIGINS.split(',') },
   maxHttpBufferSize: 1e8
 });
 
@@ -20,15 +23,42 @@ const LK_SECRET = process.env.LIVEKIT_API_SECRET || '';
 const LK_WS = process.env.LIVEKIT_WS_URL || '';
 
 const crypto = require('crypto');
-const JWT_SECRET = process.env.JWT_SECRET || 'apex_classroom_default_stable_fallback_secret_key';
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'apex_classroom_default_stable_fallback_secret_key') {
+  console.warn('WARNING: JWT_SECRET is not set or using default. Generate a secure secret with: node -e "console.log(crypto.randomBytes(32).toString(\'hex\'))"');
+}
+const JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
 
 app.use((req, res, next) => {
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
   next();
 });
 
-app.use(express.json());
+app.use(express.json({ limit: '1mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ---------- RATE LIMITING ----------
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20, // limit each IP to 20 auth requests per window
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // limit each IP to 100 API requests per minute
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ---------- INPUT SANITIZATION ----------
+function sanitizeString(str, maxLen = 255) {
+  if (typeof str !== 'string') return '';
+  // Strip HTML tags and trim
+  return str.replace(/<[^>]*>/g, '').trim().slice(0, maxLen);
+}
 
 // ---------- STATELESS SIGNED TOKEN UTILS ----------
 
@@ -101,19 +131,23 @@ function authenticate(req, res, next) {
 
 // ---------- REST API ----------
 
-// Auth endpoints
-app.post('/api/auth/register', (req, res) => {
+// Auth endpoints (with rate limiting)
+app.post('/api/auth/register', authLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password || username.length < 3 || password.length < 6) {
     return res.status(400).json({ error: 'Username (min 3 chars) and password (min 6 chars) are required' });
   }
+  const sanitizedUsername = sanitizeString(username, 30);
+  if (!/^[a-zA-Z0-9_]+$/.test(sanitizedUsername)) {
+    return res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+  }
   try {
-    const existing = db.getUserByUsername(username);
+    const existing = db.getUserByUsername(sanitizedUsername);
     if (existing) {
       return res.status(400).json({ error: 'Username is already taken' });
     }
     const id = uuidv4().slice(0, 8);
-    const user = db.createUser(id, username, password);
+    const user = db.createUser(id, sanitizedUsername, password);
     const token = generateToken(user);
     setSessionCookie(res, req, token);
     res.json({ id: user.id, username: user.username });
@@ -122,13 +156,13 @@ app.post('/api/auth/register', (req, res) => {
   }
 });
 
-app.post('/api/auth/login', (req, res) => {
+app.post('/api/auth/login', authLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) {
     return res.status(400).json({ error: 'Username and password are required' });
   }
   try {
-    const user = db.getUserByUsername(username);
+    const user = db.getUserByUsername(sanitizeString(username, 30));
     if (!user || !db.verifyPassword(password, user.password_hash)) {
       return res.status(401).json({ error: 'Invalid username or password' });
     }
@@ -140,7 +174,7 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-app.post('/api/auth/google', async (req, res) => {
+app.post('/api/auth/google', authLimiter, async (req, res) => {
   const { credential } = req.body;
   if (!credential) {
     return res.status(400).json({ error: 'Credential is required' });
@@ -259,7 +293,7 @@ app.get('/api/sessions/:id', (req, res) => {
       return res.json({ session });
     }
     // If not found in active sessions, check scheduled meetings
-    const scheduled = db.getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(req.params.id);
+    const scheduled = db.getScheduledMeeting(req.params.id);
     if (scheduled) {
       return res.json({ scheduled });
     }
@@ -352,7 +386,7 @@ io.on('connection', (socket) => {
       let session = null;
       try { session = db.getSession(roomId); } catch (e) {}
       let scheduled = null;
-      try { scheduled = db.getDb().prepare('SELECT user_id FROM scheduled_meetings WHERE id = ?').get(roomId); } catch (e) {}
+      try { scheduled = db.getScheduledMeeting(roomId); } catch (e) {}
 
       if (session || scheduled) {
         const ownerId = session?.user_id || scheduled?.user_id;
@@ -448,8 +482,32 @@ io.on('connection', (socket) => {
     io.to(targetSocketId).emit('signal-candidate', { fromSocketId: socket.id, candidate });
   });
 
-  // Chat
+  // Chat (with server-side permission enforcement)
   socket.on('chat-message', ({ roomId, senderId, senderName, message, targetSocketId, recipientName }) => {
+    // Enforce chat permissions
+    const roomPerms = chatPermissions.get(roomId) || 'public-private';
+    
+    // Check if sender has mod powers for this room
+    const senderIsMod = hasModPowers(roomId, socket.id);
+    
+    // Permission matrix:
+    // 'none' - nobody can chat (except mods can still DM)
+    // 'host-only' - only mods can chat publicly
+    // 'public' - everyone can chat publicly, no private DMs
+    // 'public-private' - everyone can chat publicly and privately (default)
+    
+    if (roomPerms === 'none') {
+      // Only mods can send messages
+      if (!senderIsMod) return;
+    } else if (roomPerms === 'host-only') {
+      // Only mods can send public messages
+      if (!senderIsMod && !targetSocketId) return;
+    } else if (roomPerms === 'public') {
+      // No private DMs to non-mods
+      if (!senderIsMod && targetSocketId) return;
+    }
+    // 'public-private': no restrictions
+    
     const payload = { 
       senderId, 
       senderName, 
@@ -787,8 +845,12 @@ io.on('connection', (socket) => {
     io.to(roomId).emit('slide-control-revoked');
   });
 
+  // Validate and store chat permissions
+  const VALID_PERMISSIONS = ['none', 'host-only', 'public', 'public-private'];
   socket.on('change-chat-permissions', ({ roomId, permissions }) => {
     if (!hasModPowers(roomId, socket.id)) return;
+    // Only allow valid permission values
+    if (!VALID_PERMISSIONS.includes(permissions)) return;
     chatPermissions.set(roomId, permissions);
     io.to(roomId).emit('chat-permissions-changed', { permissions });
   });
@@ -809,6 +871,30 @@ io.on('connection', (socket) => {
   socket.on('mute-all-except-presenter', ({ roomId, presenterSocketId }) => {
     if (!hasModPowers(roomId, socket.id)) return;
     socket.to(roomId).emit('mute-all-except-presenter-command', { presenterSocketId });
+  });
+
+  // Handle explicit leave-room to clean up server state without waiting for disconnect
+  socket.on('leave-room', ({ roomId }) => {
+    if (currentRoom && rooms.has(currentRoom)) {
+      rooms.get(currentRoom).delete(socket.id);
+      if (rooms.get(currentRoom).size === 0) rooms.delete(currentRoom);
+      socket.to(currentRoom).emit('participant-left', { socketId: socket.id });
+      if (participantInfo) {
+        try { db.logLeave(currentRoom, participantInfo.participantId); } catch (e) { /* ok */ }
+      }
+      
+      // Clean up hand raise queue
+      let queue = handRaiseQueues.get(currentRoom);
+      if (queue) {
+        queue = queue.filter(item => item.socketId !== socket.id);
+        handRaiseQueues.set(currentRoom, queue);
+        io.to(currentRoom).emit('hand-raise-queue-changed', queue);
+      }
+      
+      currentRoom = null;
+      participantInfo = null;
+    }
+    socket.leave(roomId);
   });
 
   // Disconnect
