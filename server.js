@@ -7,8 +7,13 @@ const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 const rateLimit = require('express-rate-limit');
 const db = require('./database');
+const pino = require('pino');
+const pinoHttp = require('pino-http');
+
+const logger = pino({ level: process.env.LOG_LEVEL || 'info' });
 
 const app = express();
+app.use(pinoHttp({ logger }));
 const server = http.createServer(app);
 
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*';
@@ -309,8 +314,16 @@ app.get('/api/sessions/:id', (req, res) => {
     res.status(404).json({ error: 'Session not found' });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-app.get('/api/sessions/:id/attendance', authenticate, (req, res) => { res.json(db.getAttendance(req.params.id)); });
-app.get('/api/sessions/:id/chat', authenticate, (req, res) => { res.json(db.getChatHistory(req.params.id)); });
+app.get('/api/sessions/:id/attendance', authenticate, (req, res) => { 
+  const limit = parseInt(req.query.limit) || 1000;
+  const offset = parseInt(req.query.offset) || 0;
+  res.json(db.getAttendance(req.params.id, limit, offset)); 
+});
+app.get('/api/sessions/:id/chat', authenticate, (req, res) => { 
+  const limit = parseInt(req.query.limit) || 1000;
+  const offset = parseInt(req.query.offset) || 0;
+  res.json(db.getChatHistory(req.params.id, limit, offset)); 
+});
 
 app.get('/api/sessions/:id/export/:format', authenticate, (req, res) => {
   const { id, format } = req.params;
@@ -393,6 +406,25 @@ const screenShareControllers = new Map();
 const spotlightQueue = new Map();
 const hostKeys = new Map();
 const muteOnEntry = new Map(); // roomId -> Set of participantIds to auto-mute on join
+
+// Helper to cleanup room maps if empty
+function cleanupRoomIfEmpty(roomId) {
+  const room = rooms.get(roomId);
+  if (!room || room.size > 0) return;
+  
+  // Aggressively clean up all state maps associated with this room
+  rooms.delete(roomId);
+  lockedRooms.delete(roomId);
+  waitingRooms.delete(roomId);
+  slideControllers.delete(roomId);
+  handRaiseQueues.delete(roomId);
+  chatPermissions.delete(roomId);
+  screenShareControllers.delete(roomId);
+  spotlightQueue.delete(roomId);
+  hostKeys.delete(roomId);
+  muteOnEntry.delete(roomId);
+  logger.info({ roomId }, 'Room cleaned up from memory');
+}
 
 function hasModPowers(roomId, socketId) {
   const room = rooms.get(roomId);
@@ -582,11 +614,8 @@ io.on('connection', (socket) => {
     if (room) {
       room.forEach((info, sid) => { io.to(sid).emit('meeting-ended-by-host'); });
     }
-    try { db.endSession(roomId); } catch (e) {}
-    rooms.delete(roomId); lockedRooms.delete(roomId); waitingRooms.delete(roomId);
-    handRaiseQueues.delete(roomId); chatPermissions.delete(roomId);
-    slideControllers.delete(roomId); hostKeys.delete(roomId);
-    screenShareControllers.delete(roomId); spotlightQueue.delete(roomId); muteOnEntry.delete(roomId);
+    try { db.endSession(roomId); } catch (e) { logger.error({ err: e }, 'Failed to end session'); }
+    cleanupRoomIfEmpty(roomId); // Delegate to the cleanup helper
   });
 
   // Mute on Entry per participant
@@ -689,11 +718,11 @@ io.on('connection', (socket) => {
   socket.on('leave-room', ({ roomId }) => {
     if (currentRoom && rooms.has(currentRoom)) {
       rooms.get(currentRoom).delete(socket.id);
-      if (rooms.get(currentRoom).size === 0) rooms.delete(currentRoom);
       socket.to(currentRoom).emit('participant-left', { socketId: socket.id });
-      if (participantInfo) { try { db.logLeave(currentRoom, participantInfo.participantId); } catch (e) {} }
+      if (participantInfo) { try { db.logLeave(currentRoom, participantInfo.participantId); } catch (e) { logger.error(e, 'Failed to log leave'); } }
       let queue = handRaiseQueues.get(currentRoom);
       if (queue) { queue = queue.filter(item => item.socketId !== socket.id); handRaiseQueues.set(currentRoom, queue); io.to(currentRoom).emit('hand-raise-queue-changed', queue); }
+      cleanupRoomIfEmpty(currentRoom);
       currentRoom = null; participantInfo = null;
     }
     socket.leave(roomId);
@@ -708,11 +737,11 @@ io.on('connection', (socket) => {
     }
     if (currentRoom && rooms.has(currentRoom)) {
       rooms.get(currentRoom).delete(socket.id);
-      if (rooms.get(currentRoom).size === 0) rooms.delete(currentRoom);
       socket.to(currentRoom).emit('participant-left', { socketId: socket.id });
-      if (participantInfo) { try { db.logLeave(currentRoom, participantInfo.participantId); } catch (e) {} }
+      if (participantInfo) { try { db.logLeave(currentRoom, participantInfo.participantId); } catch (e) { logger.error(e, 'Failed to log leave on disconnect'); } }
       let queue = handRaiseQueues.get(currentRoom);
       if (queue) { queue = queue.filter(item => item.socketId !== socket.id); handRaiseQueues.set(currentRoom, queue); io.to(currentRoom).emit('hand-raise-queue-changed', queue); }
+      cleanupRoomIfEmpty(currentRoom);
     }
   });
 });
