@@ -10,7 +10,8 @@ import {
   loadUpcoming,
   deleteScheduled,
   exportSession,
-  viewSessionDetails
+  viewSessionDetails,
+  initGoogleAuth
 } from './ui.js';
 import {
   initMedia,
