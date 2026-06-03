@@ -19,6 +19,11 @@ const LK_WS = process.env.LIVEKIT_WS_URL || '';
 const crypto = require('crypto');
 const JWT_SECRET = process.env.JWT_SECRET || 'apex_classroom_default_stable_fallback_secret_key';
 
+app.use((req, res, next) => {
+  res.setHeader('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+  next();
+});
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
