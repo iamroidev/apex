@@ -59,6 +59,13 @@ GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
 
 # CORS Allowed Origins — comma-separated, or * for development
 ALLOWED_ORIGINS=*
+
+# Public hostname for invite links and ICS calendar invites
+PUBLIC_HOST=${PUBLIC_IP}
+
+# Email notifications (optional — set EMAIL_USER/EMAIL_PASS for Gmail SMTP)
+EMAIL_USER=
+EMAIL_PASS=
 EOF
 else
     echo "Existing .env file found. Preserving config."

@@ -2,6 +2,8 @@
 import { state, dom, escapeHtml, genId } from './core.js';
 import { playChime } from './main.js';
 
+const EMOJI_LIST = ['😀','😁','😂','🤣','😃','😄','😅','😆','😉','😊','😋','😎','😍','🥰','😘','😜','😝','🤗','🤔','🤩','🙄','😏','😒','😔','😞','😟','😠','😡','😢','😭','😤','😱','😨','😰','😥','😓','🤯','😳','🥵','🥶','😶‍🌫️','😱','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','💀','☠️','👽','👾','🤖','🎃','😺','😸','😹','😻','😼','😽','🙀','😿','😾','💋','👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','👍','👎','👊','✊','🤛','🤜','👏','🙌','👐','🤲','🤝','🙏','💪','🦵','🦶','👂','🦻','👃','🧠','🦷','🦴','👀','👁️','👅','👄','💘','❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','🦸','🦹','🧑‍🎤','🧑‍🏫','🧑‍💻','🧑‍🔬','🧑‍🎨','🧑‍🚀','🧑‍✈️','👮','🕵️','👨‍⚕️','👩‍⚕️','👨‍🎓','👩‍🎓','👨‍🏫','👩‍🏫','👨‍💻','👩‍💻','👨‍🔧','👩‍🔧','🎉','🎊','🎈','🎁','🏆','🥇','🥈','🥉','🏅','🎖️','🏵️','🎗️','🎪','🎭','🎨','🎬','🎤','🎧','🎼','🎹','🥁','🎷','🎺','🎸','🪕','🎻','🎲','♟️','🎯','🎳','🎮','🕹️','🎰','🎲','🧩','♠️','♥️','♦️','♣️','🃏','🀄','🎴','🌍','🌎','🌏','🌐','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🧱','🪨','🪵','🛖','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋','⛲','⛺','🌁','🌃','🏙️','🌄','🌅','🌆','🌇','🌉','🌌','🌠','🎇','🎆','🌈','🏳️‍🌈','🏴‍☠️','🇺🇳','🇺🇸','🇬🇧','🇫🇷','🇩🇪','🇮🇹','🇪🇸','🇯🇵','🇨🇳','🇷🇺','🇧🇷','🇮🇳','🇦🇺','🇨🇦','🇰🇷','🇸🇦','🇿🇦','🇳🇬','🇰🇪','🇬🇭'];
+
 export function bindChat() {
   dom.btnSendChat.addEventListener('click', sendChat);
   dom.chatInput.addEventListener('keydown', (e) => {
@@ -16,6 +18,72 @@ export function bindChat() {
       filterChatMessages(e.target.value);
     });
   }
+
+  // Build emoji picker
+  buildEmojiPicker();
+}
+
+function buildEmojiPicker() {
+  const emojiPicker = document.createElement('div');
+  emojiPicker.id = 'emoji-picker';
+  emojiPicker.style.cssText = `
+    display: none;
+    position: absolute;
+    bottom: 50px;
+    left: 12px;
+    width: 300px;
+    height: 200px;
+    background: var(--bg-surface);
+    border: 2px solid var(--border-strong);
+    box-shadow: var(--neo-shadow-md);
+    overflow-y: auto;
+    z-index: 100;
+    padding: 8px;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    gap: 2px;
+  `;
+  
+  EMOJI_LIST.forEach(emoji => {
+    const btn = document.createElement('button');
+    btn.textContent = emoji;
+    btn.type = 'button';
+    btn.style.cssText = 'background:transparent;border:none;cursor:pointer;font-size:18px;padding:2px;border-radius:4px;transition:background 0.1s;';
+    btn.addEventListener('mouseenter', () => btn.style.background = 'var(--bg-hover)');
+    btn.addEventListener('mouseleave', () => btn.style.background = 'transparent');
+    btn.addEventListener('click', () => {
+      dom.chatInput.value += emoji;
+      dom.chatInput.focus();
+      emojiPicker.style.display = 'none';
+    });
+    emojiPicker.appendChild(btn);
+  });
+
+  // Emoji toggle button next to chat input
+  const emojiBtn = document.createElement('button');
+  emojiBtn.className = 'btn-icon';
+  emojiBtn.title = 'Emoji Picker';
+  emojiBtn.innerHTML = '😊';
+  emojiBtn.style.cssText = 'height:38px;width:38px;flex-shrink:0;padding:0;margin-right:4px;font-size:18px;';
+  emojiBtn.addEventListener('click', () => {
+    const isVisible = emojiPicker.style.display === 'grid';
+    emojiPicker.style.display = isVisible ? 'none' : 'grid';
+    emojiPicker.style.bottom = '50px';
+    emojiPicker.style.left = '12px';
+  });
+
+  // Insert emoji button before file attach button
+  if (dom.btnChatAttach && dom.btnChatAttach.parentNode) {
+    dom.btnChatAttach.parentNode.insertBefore(emojiBtn, dom.btnChatAttach);
+    dom.btnChatAttach.parentNode.appendChild(emojiPicker);
+  }
+
+  // Close on click outside
+  document.addEventListener('click', (e) => {
+    if (!emojiPicker.contains(e.target) && e.target !== emojiBtn) {
+      emojiPicker.style.display = 'none';
+    }
+  });
 }
 
 export function sendChat() {

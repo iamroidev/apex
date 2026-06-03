@@ -580,16 +580,55 @@ export function toggleRecording() {
 }
 
 function startRecordingLocal() {
-  const stream = dom.localVideo.srcObject;
-  if (!stream) return;
+  // Capture the full video grid (all participants, not just local)
+  const gridEl = dom.videoGrid;
+  if (!gridEl) return;
 
-  const canvasStream = dom.localVideo.captureStream ? dom.localVideo.captureStream() : null;
-  const recordStream = canvasStream || stream;
+  // Create a canvas that renders the grid
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280;
+  canvas.height = 720;
+  const ctx = canvas.getContext('2d');
 
+  state.recordingCanvasInterval = setInterval(() => {
+    ctx.fillStyle = '#040508';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    
+    // Draw all video tiles onto canvas
+    const tiles = gridEl.querySelectorAll('.video-tile');
+    const count = tiles.length || 1;
+    const cols = Math.min(count, Math.ceil(Math.sqrt(count)));
+    const rows = Math.ceil(count / cols);
+    const tw = canvas.width / cols;
+    const th = canvas.height / rows;
+
+    tiles.forEach((tile, i) => {
+      const video = tile.querySelector('video');
+      const col = i % cols;
+      const row = Math.floor(i / cols);
+      const x = col * tw;
+      const y = row * th;
+      
+      if (video && video.readyState >= 2) {
+        ctx.drawImage(video, x, y, tw, th);
+      }
+      // Draw name overlay
+      const nameEl = tile.querySelector('.tile-name');
+      if (nameEl) {
+        ctx.fillStyle = 'rgba(0,0,0,0.5)';
+        ctx.fillRect(x, y + th - 24, tw, 24);
+        ctx.fillStyle = '#fff';
+        ctx.font = '12px "Space Grotesk", sans-serif';
+        ctx.fillText(nameEl.textContent, x + 8, y + th - 8);
+      }
+    });
+  }, 200);
+
+  const canvasStream = canvas.captureStream(15);
   try {
-    state.mediaRecorder = new MediaRecorder(recordStream, { mimeType: 'video/webm;codecs=vp9,opus' });
+    state.mediaRecorder = new MediaRecorder(canvasStream, { mimeType: 'video/webm;codecs=vp9,opus' });
   } catch (e) {
-    state.mediaRecorder = new MediaRecorder(recordStream);
+    state.mediaRecorder = new MediaRecorder(canvasStream);
   }
   state.recordedChunks = [];
 
@@ -598,6 +637,10 @@ function startRecordingLocal() {
   };
 
   state.mediaRecorder.onstop = () => {
+    if (state.recordingCanvasInterval) {
+      clearInterval(state.recordingCanvasInterval);
+      state.recordingCanvasInterval = null;
+    }
     const blob = new Blob(state.recordedChunks, { type: 'video/webm' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -696,6 +739,79 @@ export function bindMeetingControls() {
     setTimeout(() => {
       dom.meetingCodeDisplay.textContent = state.roomId;
     }, 1200);
+  });
+
+  // End Meeting For All button
+  const endMeetingBtn = document.getElementById('btn-end-meeting-all');
+  if (endMeetingBtn) {
+    endMeetingBtn.addEventListener('click', () => {
+      if (confirm('End the meeting for ALL participants? This cannot be undone.')) {
+        state.socket.emit('end-meeting-for-all', { roomId: state.roomId });
+        alert('Meeting ended for everyone.');
+        leaveMeeting();
+      }
+    });
+  }
+
+  // Keyboard Shortcuts
+  document.addEventListener('keydown', (e) => {
+    if (state.view !== 'meeting') return;
+    const activeEl = document.activeElement;
+    const isInput = activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA' || activeEl.isContentEditable);
+    
+    // M = toggle mic
+    if (e.key === 'm' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      toggleMic();
+    }
+    // V = toggle cam
+    if (e.key === 'v' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      toggleCam();
+    }
+    // S = toggle screen share
+    if (e.key === 's' && !e.ctrlKey && !e.metaKey && !isInput && !e.shiftKey) {
+      e.preventDefault();
+      toggleScreenShare();
+    }
+    // R = toggle recording
+    if (e.key === 'r' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      toggleRecording();
+    }
+    // D = toggle raise hand
+    if (e.key === 'd' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      toggleHandRaise();
+    }
+    // H = toggle reactions picker
+    if (e.key === 'h' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      state.reactionsOpen = !state.reactionsOpen;
+      dom.reactionsPicker.classList.toggle('hidden', !state.reactionsOpen);
+    }
+    // F = toggle fullscreen
+    if (e.key === 'f' && !e.ctrlKey && !e.ctrlKey && !isInput) {
+      e.preventDefault();
+      toggleFullScreen();
+    }
+    // T = toggle chat panel
+    if (e.key === 't' && !e.ctrlKey && !e.metaKey && !isInput) {
+      e.preventDefault();
+      togglePanel('chat');
+    }
+    // Ctrl+E = leave meeting
+    if (e.key === 'e' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (confirm('Are you sure you want to leave the meeting?')) {
+        leaveMeeting();
+      }
+    }
+    // Ctrl+W = toggle whiteboard
+    if (e.key === 'w' && (e.ctrlKey || e.metaKey) && !isInput) {
+      e.preventDefault();
+      toggleWhiteboard();
+    }
   });
 }
 
