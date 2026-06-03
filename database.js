@@ -200,6 +200,10 @@ function getChatHistory(sessionId) {
   ).all(sessionId);
 }
 
+function getScheduledMeeting(id) {
+  return getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(id);
+}
+
 // --- Scheduled meetings ---
 
 function scheduleMeeting(id, title, description, scheduledFor, durationMinutes, hostName, userId = null) {
@@ -287,7 +291,7 @@ module.exports = {
   createSession, getSession, endSession, listSessions,
   logJoin, logLeave, getAttendance,
   saveChat, getChatHistory,
-  scheduleMeeting, listScheduledMeetings, deleteScheduledMeeting,
+  scheduleMeeting, getScheduledMeeting, listScheduledMeetings, deleteScheduledMeeting,
   exportSessionJSON, exportSessionCSV,
   saveWhiteboardPath, getWhiteboardPaths, clearWhiteboardPaths, undoLastWhiteboardPath
 };
