@@ -1,6 +1,6 @@
 // public/src/livekit.js — LiveKit Client SFU wrapper room connection and events
 import { state, dom, escapeHtml } from './core.js';
-import { getCSSFilter, updateVideoGridCount, addPipButtonToTile } from './media.js';
+import { getCSSFilter, updateVideoGridCount, addPipButtonToTile, updateSpeakerViewLayout } from './media.js';
 
 export async function connectToLiveKit(wsUrl, token) {
   try {
@@ -87,6 +87,10 @@ export async function connectToLiveKit(wsUrl, token) {
           if (tile) tile.classList.add('speaking');
         }
       });
+      
+      if (state.layoutMode === 'speaker') {
+        updateSpeakerViewLayout();
+      }
     });
 
     room.on(LivekitClient.RoomEvent.ParticipantConnected, (participant) => {
