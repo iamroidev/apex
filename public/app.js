@@ -297,6 +297,8 @@
     galleryPageIndicator: $('#gallery-page-indicator'),
     dashAvatarToggle: $('#dash-avatar-toggle'),
     dashProfileDropdown: $('#dash-profile-dropdown'),
+    recBadge: $('#rec-badge'),
+    btnLeaveHeader: $('#btn-leave-header'),
 
     // Chat Attachment
     chatFileInput: $('#chat-file-input'),
@@ -1752,6 +1754,9 @@
     dom.btnScreen.addEventListener('click', toggleScreenShare);
     dom.btnRecord.addEventListener('click', toggleRecording);
     dom.btnLeave.addEventListener('click', leaveMeeting);
+    if (dom.btnLeaveHeader) {
+      dom.btnLeaveHeader.addEventListener('click', leaveMeeting);
+    }
     if (dom.btnSpawnBots) {
       dom.btnSpawnBots.addEventListener('click', spawnSandboxBots);
     }
@@ -1765,6 +1770,7 @@
       dom.sidePanel.classList.add('hidden');
       dom.btnChatToggle.classList.remove('active');
       dom.btnParticipantsToggle.classList.remove('active');
+      dom.viewMeeting.classList.remove('side-panel-open');
     });
 
     dom.wbClose.addEventListener('click', () => {
@@ -1898,6 +1904,20 @@
     }
   }
 
+  function playVoicePrompt(text) {
+    if ('speechSynthesis' in window) {
+      try {
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.warn('SpeechSynthesis failed:', e);
+      }
+    }
+  }
+
   function startRecording() {
     const stream = dom.localVideo.srcObject;
     if (!stream) return;
@@ -1930,6 +1950,14 @@
     state.mediaRecorder.start(1000);
     state.isRecording = true;
     dom.btnRecord.classList.add('recording');
+    
+    // Toggle visual recording indicator badge
+    if (dom.recBadge) {
+      dom.recBadge.classList.remove('hidden');
+      dom.recBadge.style.display = 'inline-flex';
+    }
+    dom.viewMeeting.classList.add('recording-active');
+    playVoicePrompt("Recording in progress");
   }
 
   function stopRecording() {
@@ -1938,6 +1966,14 @@
     }
     state.isRecording = false;
     dom.btnRecord.classList.remove('recording');
+
+    // Toggle visual recording indicator badge
+    if (dom.recBadge) {
+      dom.recBadge.classList.add('hidden');
+      dom.recBadge.style.display = 'none';
+    }
+    dom.viewMeeting.classList.remove('recording-active');
+    playVoicePrompt("Recording stopped");
   }
 
   function toggleHandRaise() {
@@ -2034,6 +2070,7 @@
     dom.sidePanel.classList.add('hidden');
     dom.wbOverlay.classList.add('hidden');
     dom.btnWhiteboardToggle.classList.remove('active');
+    dom.viewMeeting.classList.remove('side-panel-open');
 
     // Reset UI states
     dom.btnMic.classList.remove('muted');
@@ -2041,6 +2078,7 @@
     dom.btnScreen.classList.remove('active');
     dom.btnRecord.classList.remove('recording');
     dom.btnHand.classList.remove('active');
+    dom.viewMeeting.classList.remove('recording-active');
     dom.chatMessages.innerHTML = '';
     state.chatUnread = 0;
     dom.chatBadge.classList.add('hidden');
@@ -2073,9 +2111,11 @@
       dom.sidePanel.classList.add('hidden');
       dom.btnChatToggle.classList.remove('active');
       dom.btnParticipantsToggle.classList.remove('active');
+      dom.viewMeeting.classList.remove('side-panel-open');
     } else {
       state.panelOpen = true;
       dom.sidePanel.classList.remove('hidden');
+      dom.viewMeeting.classList.add('side-panel-open');
       switchTab(tab);
     }
   }

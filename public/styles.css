@@ -2654,6 +2654,69 @@ body::before {
 }
 
 /* Responsive enhancements for mobile navigation & modals */
+.mobile-only-leave {
+  display: none !important;
+}
+
+/* Custom solid red recording badge styling */
+#rec-badge {
+  background: var(--accent-coral) !important;
+  color: #ffffff !important;
+  border: 2px solid var(--border-strong) !important;
+  box-shadow: 2px 2px 0px #000000 !important;
+  padding: 2px 6px;
+  font-size: var(--text-xs);
+  margin-left: var(--sp-3);
+  font-weight: bold;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  animation: pulse 1s infinite alternate !important;
+}
+#rec-badge span {
+  color: #ffffff !important;
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* High visibility recording indicator for the video area */
+.recording-indicator-overlay {
+  position: absolute;
+  top: var(--sp-3);
+  left: var(--sp-3);
+  background: var(--accent-coral) !important;
+  color: #ffffff !important;
+  font-family: var(--font);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  padding: 4px var(--sp-3);
+  border: 2px solid var(--border-strong);
+  box-shadow: var(--neo-shadow-sm);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  z-index: 100;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  pointer-events: none;
+  animation: pulse 1s infinite alternate;
+}
+.recording-indicator-overlay .recording-dot {
+  color: #ffffff;
+  animation: pulse-dot 1s infinite alternate;
+  font-size: 14px;
+  line-height: 1;
+}
+#view-meeting:not(.recording-active) .recording-indicator-overlay {
+  display: none !important;
+}
+
+/* Pulse animation definition */
+@keyframes pulse {
+  0% { opacity: 1; }
+  100% { opacity: 0.4; }
+}
+
 @media (max-width: 768px) {
   .dash-header {
     padding: var(--sp-3) var(--sp-4);
@@ -2669,54 +2732,114 @@ body::before {
     font-size: 16px !important;
   }
 
-  /* Meeting Header Mobile Cleanup */
+  /* Meeting Header Mobile Cleanup (Single-Row) */
   .meeting-header {
     padding: var(--sp-2) var(--sp-3) !important;
     height: auto !important;
-    flex-wrap: wrap;
-    gap: var(--sp-1) var(--sp-3);
-  }
-  .meeting-timer .timer-label {
-    display: none !important;
+    flex-wrap: nowrap !important;
+    justify-content: space-between !important;
+    gap: var(--sp-1) !important;
   }
   .meeting-info {
-    font-size: var(--text-xs);
+    flex: 0 1 auto !important;
+    min-width: 0;
+  }
+  .meeting-info .meeting-title {
+    display: none !important;
   }
   .meeting-code {
     font-size: 10px;
     padding: 1px 4px !important;
   }
+  .meeting-timer {
+    flex: 1 1 auto !important;
+    justify-content: center !important;
+    gap: var(--sp-1) !important;
+    margin-right: 0 !important;
+  }
+  .meeting-timer .timer-label {
+    display: none !important;
+  }
   .meeting-header-actions {
-    gap: var(--sp-1);
+    flex: 0 1 auto !important;
+    justify-content: flex-end !important;
+    margin-top: 0 !important;
+    gap: var(--sp-1) !important;
   }
   .meeting-header-actions button {
     font-size: 10px !important;
     padding: var(--sp-1) var(--sp-2.5) !important;
     height: 28px !important;
   }
+  
+  /* Mobile Leave button styling */
+  .mobile-only-leave {
+    display: inline-block !important;
+  }
+  #btn-leave-header {
+    background: var(--accent-coral) !important;
+    color: #ffffff !important;
+    border: 2px solid var(--border-strong) !important;
+    box-shadow: var(--neo-shadow-sm) !important;
+    font-weight: bold !important;
+  }
+  #theme-toggle-meeting {
+    display: none !important;
+  }
 
-  /* Meeting Footer Control Bar Mobile Cleanup */
+  /* Mobile split-screen layout when side panel (chat/participants) is open */
+  #view-meeting.side-panel-open .meeting-body {
+    flex-direction: column !important;
+  }
+  #view-meeting.side-panel-open .video-area {
+    height: 35vh !important;
+    min-height: 180px !important;
+    flex: none !important;
+    width: 100% !important;
+  }
+  #view-meeting.side-panel-open .side-panel {
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    height: calc(100% - 35vh) !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-left: none !important;
+    border-top: 2px solid var(--border-strong) !important;
+    transform: none !important;
+    margin-right: 0 !important;
+    z-index: 5 !important;
+    display: flex !important;
+  }
+  #view-meeting.side-panel-open .side-panel.hidden {
+    display: none !important;
+  }
+
+  /* Meeting Footer Control Bar Mobile Cleanup (Horizontal Wrapping Row) */
   .control-bar {
     height: auto !important;
-    padding: var(--sp-2) var(--sp-3) !important;
-    flex-direction: column !important;
-    gap: var(--sp-2) !important;
+    padding: var(--sp-2) !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
     align-items: center !important;
+    gap: var(--sp-1.5) !important;
   }
   .controls-left {
-    display: none !important; /* Hide room code on left since it is already in the header */
+    display: none !important;
   }
   .controls-center {
     flex-wrap: wrap !important;
     justify-content: center !important;
     gap: var(--sp-1.5) !important;
-    width: 100% !important;
+    width: auto !important;
   }
   .controls-right {
-    width: 100% !important;
+    width: auto !important;
     justify-content: center !important;
-    gap: var(--sp-2) !important;
-    margin-top: 2px;
+    gap: var(--sp-1.5) !important;
+    margin-top: 0 !important;
   }
   .ctrl-btn {
     width: 38px !important;
@@ -2730,11 +2853,8 @@ body::before {
   .ctrl-divider {
     display: none !important;
   }
-  .ctrl-leave {
-    width: auto !important;
-    padding: 0 var(--sp-3) !important;
-    font-size: var(--text-xs) !important;
-    height: 38px !important;
+  .control-bar #btn-leave {
+    display: none !important;
   }
   #btn-layout-toggle {
     width: auto !important;
