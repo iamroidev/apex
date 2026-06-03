@@ -384,8 +384,19 @@ export function toggleLayoutMode() {
 export function updateSpeakerViewLayout() {
   if (state.layoutMode !== 'speaker') return;
 
-  // Determine target speaker ID (pinned first, then active loud speaker, fallback to local/first peer)
+  // Determine target speaker ID
+  // 1. Pinned participant
   let targetId = state.pinnedParticipantId;
+
+  // 2. Screen sharing priority
+  if (!targetId) {
+    const screenShareTile = document.querySelector('.video-tile.screen-sharing');
+    if (screenShareTile) {
+      targetId = screenShareTile.dataset.participant;
+    }
+  }
+
+  // 3. Active speaker priority
   if (!targetId) {
     const speakingTile = document.querySelector('.video-tile.speaking:not(.local-tile)');
     if (speakingTile) {
@@ -394,47 +405,61 @@ export function updateSpeakerViewLayout() {
       targetId = 'local';
     }
   }
+
+  // 4. Role/Default priorities
   if (!targetId) {
-    // Priority: 1. Remote host/cohost, 2. First remote participant, 3. Local student
-    let remoteHost = null;
-    state.peers.forEach((peer, socketId) => {
-      if (peer.info && (peer.info.role === 'host' || peer.info.role === 'cohost')) {
-        remoteHost = socketId;
-      }
-    });
-    if (remoteHost) {
-      targetId = remoteHost;
+    if (state.isHost || state.role === 'cohost') {
+      targetId = 'local';
     } else {
-      const firstRemote = document.querySelector('.video-tile:not(.local-tile)');
-      if (firstRemote) {
-        targetId = firstRemote.dataset.participant;
+      let remoteHost = null;
+      state.peers.forEach((peer) => {
+        if (peer.info && (peer.info.role === 'host' || peer.info.role === 'cohost')) {
+          remoteHost = peer.info.participantId;
+        }
+      });
+      if (remoteHost) {
+        targetId = remoteHost;
       } else {
-        targetId = 'local';
+        const firstRemote = document.querySelector('.video-tile:not(.local-tile)');
+        if (firstRemote) {
+          targetId = firstRemote.dataset.participant;
+        } else {
+          targetId = 'local';
+        }
       }
     }
   }
 
-  if (targetId !== state.currentSpotlightId) {
-    state.currentSpotlightId = targetId;
-    
-    // Move target tile to spotlight area
-    const targetTile = document.querySelector(`.video-tile[data-participant="${targetId}"]`);
+  // Find the target tile
+  let targetTile = document.querySelector(`.video-tile[data-participant="${targetId}"]`);
+  if (!targetTile) {
+    // Robust fallbacks if target is not found in DOM
+    targetTile = document.querySelector('.video-tile.screen-sharing') ||
+                 document.querySelector('.video-tile:not(.local-tile)') ||
+                 dom.localTile;
     if (targetTile) {
-      dom.spotlightArea.innerHTML = '';
-      dom.spotlightArea.appendChild(targetTile);
-      const video = targetTile.querySelector('video');
-      if (video && video.paused) video.play().catch(e => {});
+      targetId = targetTile.dataset.participant;
     }
-
-    // Move all other tiles to thumbnails strip
-    dom.speakerThumbnails.innerHTML = '';
-    const otherTiles = document.querySelectorAll(`.video-tile:not([data-participant="${targetId}"])`);
-    otherTiles.forEach(tile => {
-      dom.speakerThumbnails.appendChild(tile);
-      const video = tile.querySelector('video');
-      if (video && video.paused) video.play().catch(e => {});
-    });
   }
+
+  state.currentSpotlightId = targetId;
+
+  // Render spotlight area
+  if (targetTile && targetTile.parentElement !== dom.spotlightArea) {
+    dom.spotlightArea.innerHTML = '';
+    dom.spotlightArea.appendChild(targetTile);
+    const video = targetTile.querySelector('video');
+    if (video && video.paused) video.play().catch(e => {});
+  }
+
+  // Rebuild thumbnails strip
+  dom.speakerThumbnails.innerHTML = '';
+  const otherTiles = document.querySelectorAll(`.video-tile:not([data-participant="${targetId}"])`);
+  otherTiles.forEach(tile => {
+    dom.speakerThumbnails.appendChild(tile);
+    const video = tile.querySelector('video');
+    if (video && video.paused) video.play().catch(e => {});
+  });
 }
 
 export function resetToGridView() {

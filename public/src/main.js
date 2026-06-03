@@ -337,6 +337,8 @@ export async function enterMeeting(roomId) {
   }
 
   state.roomId = roomId;
+  state.isHost = false;
+  state.role = 'participant';
 
   // Query session details to restore host role and title
   try {
@@ -478,6 +480,11 @@ export async function leaveMeeting() {
 
   state.roomId = null;
   state.sessionData = null;
+  state.isHost = false;
+  state.role = 'participant';
+  state.isLocalMinimized = false;
+  state.captionsEnabled = false;
+  state.sidePanelFloating = false;
 
   // Revert URL to clean state
   const cleanUrl = window.location.origin + '/';
