@@ -106,7 +106,7 @@ function verifyPassword(password, storedHash) {
 
 // --- User Helpers ---
 
-function createUser(id, username, password) {
+async function createUser(id, username, password) {
   const passwordHash = hashPassword(password);
   getDb().prepare(
     `INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)`
@@ -114,17 +114,17 @@ function createUser(id, username, password) {
   return getUserById(id);
 }
 
-function getUserByUsername(username) {
+async function getUserByUsername(username) {
   return getDb().prepare('SELECT * FROM users WHERE username = ?').get(username);
 }
 
-function getUserById(id) {
+async function getUserById(id) {
   return getDb().prepare('SELECT * FROM users WHERE id = ?').get(id);
 }
 
 // --- Session helpers ---
 
-function createSession(id, title, hostName, userId = null, password = null, recurrence = null) {
+async function createSession(id, title, hostName, userId = null, password = null, recurrence = null) {
   const stmt = getDb().prepare(
     `INSERT INTO sessions (id, title, host_name, user_id, password, recurrence, started_at) VALUES (?, ?, ?, ?, ?, ?, datetime('now'))`
   );
@@ -132,11 +132,11 @@ function createSession(id, title, hostName, userId = null, password = null, recu
   return getSession(id);
 }
 
-function getSession(id) {
+async function getSession(id) {
   return getDb().prepare('SELECT * FROM sessions WHERE id = ?').get(id);
 }
 
-function endSession(id) {
+async function endSession(id) {
   getDb().prepare(
     `UPDATE sessions SET ended_at = datetime('now'), is_active = 0 WHERE id = ?`
   ).run(id);
@@ -150,7 +150,7 @@ function endSession(id) {
   return getSession(id);
 }
 
-function listSessions(userId = null, limit = 50) {
+async function listSessions(userId = null, limit = 50) {
   if (userId) {
     return getDb().prepare(
       'SELECT * FROM sessions WHERE user_id = ? ORDER BY created_at DESC LIMIT ?'
@@ -163,7 +163,7 @@ function listSessions(userId = null, limit = 50) {
 
 // --- Attendance helpers ---
 
-function logJoin(sessionId, participantId, displayName, role) {
+async function logJoin(sessionId, participantId, displayName, role) {
   const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
   if (!sessionExists) return;
   getDb().prepare(
@@ -171,7 +171,7 @@ function logJoin(sessionId, participantId, displayName, role) {
   ).run(sessionId, participantId, displayName, role || 'participant');
 }
 
-function logLeave(sessionId, participantId) {
+async function logLeave(sessionId, participantId) {
   getDb().prepare(
     `UPDATE attendance SET 
        left_at = datetime('now'),
@@ -180,15 +180,15 @@ function logLeave(sessionId, participantId) {
   ).run(sessionId, participantId);
 }
 
-function getAttendance(sessionId) {
+async function getAttendance(sessionId, limit = 1000, offset = 0) {
   return getDb().prepare(
-    'SELECT * FROM attendance WHERE session_id = ? ORDER BY joined_at ASC'
-  ).all(sessionId);
+    'SELECT * FROM attendance WHERE session_id = ? ORDER BY joined_at ASC LIMIT ? OFFSET ?'
+  ).all(sessionId, limit, offset);
 }
 
 // --- Chat helpers ---
 
-function saveChat(sessionId, senderId, senderName, message) {
+async function saveChat(sessionId, senderId, senderName, message) {
   const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
   if (!sessionExists) return;
   getDb().prepare(
@@ -196,26 +196,26 @@ function saveChat(sessionId, senderId, senderName, message) {
   ).run(sessionId, senderId, senderName, message);
 }
 
-function getChatHistory(sessionId) {
+async function getChatHistory(sessionId, limit = 1000, offset = 0) {
   return getDb().prepare(
-    'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY sent_at ASC'
-  ).all(sessionId);
+    'SELECT * FROM chat_messages WHERE session_id = ? ORDER BY sent_at ASC LIMIT ? OFFSET ?'
+  ).all(sessionId, limit, offset);
 }
 
-function getScheduledMeeting(id) {
+async function getScheduledMeeting(id) {
   return getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(id);
 }
 
 // --- Scheduled meetings ---
 
-function scheduleMeeting(id, title, description, scheduledFor, durationMinutes, hostName, userId = null, password = null, recurrence = null) {
+async function scheduleMeeting(id, title, description, scheduledFor, durationMinutes, hostName, userId = null, password = null, recurrence = null) {
   getDb().prepare(
     `INSERT INTO scheduled_meetings (id, title, description, scheduled_for, duration_minutes, host_name, user_id, password, recurrence) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(id, title, description || '', scheduledFor, durationMinutes || 60, hostName || 'Host', userId, password, recurrence);
   return getDb().prepare('SELECT * FROM scheduled_meetings WHERE id = ?').get(id);
 }
 
-function listScheduledMeetings(userId = null) {
+async function listScheduledMeetings(userId = null) {
   if (userId) {
     return getDb().prepare(
       'SELECT * FROM scheduled_meetings WHERE user_id = ? ORDER BY scheduled_for ASC'
@@ -226,7 +226,7 @@ function listScheduledMeetings(userId = null) {
   ).all();
 }
 
-function deleteScheduledMeeting(id) {
+async function deleteScheduledMeeting(id) {
   getDb().prepare('DELETE FROM scheduled_meetings WHERE id = ?').run(id);
 }
 
@@ -260,7 +260,7 @@ function exportSessionCSV(sessionId) {
 
 // --- Whiteboard helpers ---
 
-function saveWhiteboardPath(sessionId, pathData) {
+async function saveWhiteboardPath(sessionId, pathData) {
   const sessionExists = getDb().prepare('SELECT 1 FROM sessions WHERE id = ?').get(sessionId);
   if (!sessionExists) return;
   getDb().prepare(
@@ -268,19 +268,19 @@ function saveWhiteboardPath(sessionId, pathData) {
   ).run(sessionId, pathData);
 }
 
-function getWhiteboardPaths(sessionId) {
+async function getWhiteboardPaths(sessionId) {
   return getDb().prepare(
     `SELECT path_data FROM whiteboard_paths WHERE session_id = ? ORDER BY id ASC`
   ).all(sessionId).map(row => row.path_data);
 }
 
-function clearWhiteboardPaths(sessionId) {
+async function clearWhiteboardPaths(sessionId) {
   getDb().prepare(
     `DELETE FROM whiteboard_paths WHERE session_id = ?`
   ).run(sessionId);
 }
 
-function undoLastWhiteboardPath(sessionId) {
+async function undoLastWhiteboardPath(sessionId) {
   getDb().prepare(
     `DELETE FROM whiteboard_paths 
      WHERE id = (SELECT max(id) FROM whiteboard_paths WHERE session_id = ?)`
