@@ -15,6 +15,7 @@ export async function connectToLiveKit(wsUrl, token) {
     state.livekitRoom = room;
     state.livekitConnected = true;
 
+  setupTranscriptionListener(room);
     room.on(LivekitClient.RoomEvent.TrackSubscribed, (track, publication, participant) => {
       if (track.kind === 'video') {
         createLiveKitTile(participant.identity, participant.name);
@@ -200,4 +201,13 @@ export function createLiveKitTile(participantId, displayName) {
   
   appendTileToCorrectGridOrStrip(tile);
   addPipButtonToTile(tile);
+}
+
+export function setupTranscriptionListener(room) {
+  room.on('transcriptionReceived', (transcriptionSegments, participant, publication) => {
+    transcriptionSegments.forEach(segment => {
+      console.log(`[Transcription] ${participant?.identity}: ${segment.text}`);
+      // In a real app, render this to the DOM overlay
+    });
+  });
 }
