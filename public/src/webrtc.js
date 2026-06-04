@@ -17,7 +17,22 @@ export function connectToRoom(roomId) {
 }
 
 export function addRemotePeer(socketId, info) {
-  if (state.peers.has(socketId)) return;
+  if (state.peers.has(socketId)) {
+    const peer = state.peers.get(socketId);
+    if (peer.info && (peer.info.participantId === 'unknown' || peer.info.displayName === 'Participant')) {
+      peer.info = { ...peer.info, ...info };
+      const tile = document.querySelector(`.video-tile[data-socket="${socketId}"]`) || 
+                   document.querySelector(`.video-tile[data-participant="${info.participantId}"]`);
+      if (tile) {
+        const nameEl = tile.querySelector('.tile-name');
+        if (nameEl) nameEl.textContent = info.displayName;
+        const avatarEl = tile.querySelector('.tile-avatar .avatar-letter');
+        if (avatarEl) avatarEl.textContent = info.displayName.charAt(0).toUpperCase();
+        tile.dataset.participant = info.participantId;
+      }
+    }
+    return;
+  }
   state.peers.set(socketId, { pc: null, stream: null, info });
   if (state.sandboxMode) {
     createRemoteTile(socketId, info);

@@ -1,5 +1,5 @@
 // all-tests.js — Run all 10 Apex validation tests
-const API = 'http://54.153.93.87:3000';
+const API = process.argv[2] || 'http://localhost:3000';
 const { io } = require('socket.io-client');
 const https = require('http');
 
@@ -28,20 +28,7 @@ async function runAll() {
     log('Master session created', !!cookie, 'Cookie obtained before rate-limit test');
   } catch(e) {}
 
-  // ─── TEST 1: Auth Rate Limiting ───
-  console.log('\n─── Test 1: Auth Brute-Force Protection ───');
-  let blockedCount = 0;
-  for (let i = 0; i < 25; i++) {
-    try {
-      const res = await fetch(`${API}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: `test${i}`, password: 'wrong' })
-      });
-      if (res.status === 429) blockedCount++;
-    } catch(e) {}
-  }
-  log('Rate limiting blocks brute force', blockedCount > 0, `${blockedCount} requests blocked after limit`);
+
 
   // ─── TEST 2: Request Body Size Limit ───
   console.log('\n─── Test 2: Request Body Size Limit ───');
@@ -196,16 +183,18 @@ async function runAll() {
   try {
     await new Promise((resolve) => {
       const socket = io(API, { transports: ['websocket'], forceNew: true });
+      const timer = setTimeout(() => { log('Socket.io connection', false, 'Timeout'); resolve(); }, 15000);
       socket.on('connect', () => {
+        clearTimeout(timer);
         log('Socket.io WebSocket connects', true, `Socket ID: ${socket.id}`);
         socket.disconnect();
         resolve();
       });
       socket.on('connect_error', (err) => {
+        clearTimeout(timer);
         log('Socket.io connection', false, err.message);
         resolve();
       });
-      setTimeout(() => { log('Socket.io connection', false, 'Timeout'); resolve(); }, 5000);
     });
   } catch(e) {
     log('Socket.io test', false, e.message);
@@ -244,6 +233,21 @@ async function runAll() {
   } catch(e) {
     log('XSS prevention', false, e.message);
   }
+
+  // ─── TEST 1: Auth Rate Limiting ───
+  console.log('\n─── Test 1: Auth Brute-Force Protection ───');
+  let blockedCount = 0;
+  for (let i = 0; i < 25; i++) {
+    try {
+      const res = await fetch(`${API}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: `test${i}`, password: 'wrong' })
+      });
+      if (res.status === 429) blockedCount++;
+    } catch(e) {}
+  }
+  log('Rate limiting blocks brute force', blockedCount > 0, `${blockedCount} requests blocked after limit`);
 
   // ─── SUMMARY ───
   console.log('\n═══════════════════════════════════════════');
