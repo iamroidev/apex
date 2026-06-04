@@ -174,10 +174,16 @@ export function bindSocketEvents() {
   });
 
   s.on('role-changed', ({ socketId, role }) => {
-    if (socketId === s.id) { state.role = role; updateRoleUI(); }
+    if (socketId === s.id) {
+      state.role = role;
+      state.isHost = (role === 'host');
+      updateRoleUI();
+    }
     else { const peer = state.peers.get(socketId); if (peer) peer.info.role = role; }
     updateParticipantsList();
   });
+
+  s.on('claim-host-error', ({ error }) => { alert(error); });
 
   s.on('participant-renamed', ({ socketId, displayName }) => {
     const peer = state.peers.get(socketId);

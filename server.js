@@ -526,7 +526,8 @@ io.on('connection', (socket) => {
         const username = mention.slice(1).toLowerCase();
         if (rooms.has(roomId)) {
           rooms.get(roomId).forEach((p, sid) => {
-            if (p.displayName && p.displayName.toLowerCase().includes(username)) {
+            const cleanName = p.displayName ? p.displayName.toLowerCase().replace(/\s+/g, '_') : '';
+            if (p.displayName && (p.displayName.toLowerCase().includes(username) || cleanName.includes(username))) {
               io.to(sid).emit('chat-mention', { fromName: senderName, mention, message });
             }
           });
@@ -611,6 +612,22 @@ io.on('connection', (socket) => {
   // Security toggles
   socket.on('lock-room', ({ roomId, locked }) => { if (!hasModPowers(roomId, socket.id)) return; if (locked) lockedRooms.add(roomId); else lockedRooms.delete(roomId); io.to(roomId).emit('room-lock-changed', { locked }); });
   socket.on('toggle-waiting-room', ({ roomId, enabled }) => { if (!hasModPowers(roomId, socket.id)) return; if (enabled) waitingRooms.add(roomId); else waitingRooms.delete(roomId); io.to(roomId).emit('waiting-room-changed', { enabled }); });
+  socket.on('claim-host', ({ roomId, hostKey }) => {
+    const hk = hostKeys.get(roomId);
+    if (hk && hostKey === hk) {
+      const room = rooms.get(roomId);
+      if (room) {
+        const p = room.get(socket.id);
+        if (p) {
+          p.role = 'host';
+          io.to(roomId).emit('role-changed', { socketId: socket.id, role: 'host' });
+          try { db.logJoin(roomId, p.participantId, p.displayName, 'host'); } catch (e) {}
+        }
+      }
+    } else {
+      socket.emit('claim-host-error', { error: 'Invalid Host Key' });
+    }
+  });
   socket.on('spotlight-participants', ({ roomId, targetSocketIds }) => { if (!hasModPowers(roomId, socket.id)) return; spotlightQueue.set(roomId, targetSocketIds || []); io.to(roomId).emit('spotlight-updated', { spotlightSocketIds: targetSocketIds || [] }); });
 
   socket.on('waiting-admit', ({ roomId, targetSocketId }) => {
