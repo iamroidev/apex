@@ -14,6 +14,7 @@
   --bg-base: #040508;
   --bg-primary: #080a10;
   --bg-surface: #0e111b;
+  --bg-surface-alpha: rgba(14, 17, 27, 0.85);
   --bg-elevated: #151926;
   --bg-hover: #1c2234;
 
@@ -405,7 +406,6 @@ body::before {
 #btn-session-logs:hover .card-label { color: var(--text-accent-gold); }
 #btn-session-logs:hover .card-desc { color: var(--text-secondary); }
 #btn-session-logs:hover .card-icon { background: var(--accent-gold-dim); color: var(--text-accent-gold); }
-}
 
 /* Section headings */
 .section-heading {
@@ -2536,6 +2536,7 @@ body::before {
   --bg-base: #f4f3f0;
   --bg-primary: #ffffff;
   --bg-surface: #faf9f7;
+  --bg-surface-alpha: rgba(250, 249, 247, 0.85);
   --bg-elevated: #eae8e3;
   --bg-hover: #dedcd5;
 
@@ -2669,12 +2670,6 @@ body::before {
 /* Light mode: meeting layout */
 [data-theme="light"] .meeting-layout {
   background: var(--bg-base);
-}
-
-/* Light mode: recording pulse */
-[data-theme="light"] @keyframes recording-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(204, 34, 68, 0.3); }
-  50% { box-shadow: 0 0 0 6px rgba(204, 34, 68, 0); }
 }
 
 /* Light mode: ctrl-leave */
@@ -2893,32 +2888,37 @@ body::before {
     display: none !important;
   }
 
-  /* Mobile split-screen layout when side panel (chat/participants) is open */
-  #view-meeting.side-panel-open .meeting-body {
-    flex-direction: column !important;
-  }
+  /* Mobile overlay layout when side panel (chat/participants) is open */
   #view-meeting.side-panel-open .video-area {
-    height: 35vh !important;
-    min-height: 180px !important;
-    flex: none !important;
-    width: 100% !important;
+    display: none !important;
   }
   #view-meeting.side-panel-open .side-panel {
     position: relative !important;
-    top: auto !important;
-    right: auto !important;
-    bottom: auto !important;
-    height: calc(100% - 35vh) !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    height: 100% !important;
     width: 100% !important;
     max-width: 100% !important;
     border-left: none !important;
-    border-top: 2px solid var(--border-strong) !important;
+    border-top: none !important;
     transform: none !important;
     margin-right: 0 !important;
-    z-index: 5 !important;
+    z-index: 50 !important;
     display: flex !important;
   }
   #view-meeting.side-panel-open .side-panel.hidden {
+    display: none !important;
+  }
+  #btn-dock-float-toggle {
+    display: none !important;
+  }
+  #btn-screen,
+  #btn-record,
+  #btn-pip-toggle,
+  #btn-fullscreen-toggle,
+  #btn-captions-toggle,
+  .ctrl-divider {
     display: none !important;
   }
 
@@ -3084,7 +3084,6 @@ body::before {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), margin 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-/* Floating Side Panel Style */
 .side-panel.floating-mode {
   position: absolute;
   top: 80px;
@@ -3092,7 +3091,8 @@ body::before {
   bottom: 96px;
   height: auto;
   width: 320px;
-  background: rgba(14, 17, 27, 0.85) !important;
+  background: var(--bg-surface-alpha) !important;
+  color: var(--text-primary) !important;
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 2px solid var(--border-strong) !important;

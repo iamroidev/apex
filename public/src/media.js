@@ -3,6 +3,7 @@ import { state, dom, formatTime, playVoicePrompt } from './core.js';
 import { createLiveKitTile } from './livekit.js';
 import { createRemoteTile, connectToRoom } from './webrtc.js';
 import { onScreenShareActive } from './main.js'; // imported from main.js orchestrator
+import { resizeWhiteboard } from './whiteboard.js';
 
 let activeAnalysisCtx = null;
 let activeAnalysisTrack = null;
@@ -1653,6 +1654,10 @@ export function setupStripToggle(stripId, btnId) {
       strip.style.left = '';
       strip.style.width = '';
       strip.style.height = '';
+    }
+    
+    if (typeof resizeWhiteboard === 'function') {
+      resizeWhiteboard();
     }
   });
 }

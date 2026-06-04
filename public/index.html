@@ -674,6 +674,12 @@
             <div class="participants-search-wrapper" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); flex-shrink: 0; background: var(--bg-secondary);">
               <input type="text" id="participants-search" class="input-field" placeholder="Search participants..." autocomplete="off" style="height: 32px; font-size: var(--text-xs); margin: 0; padding: 0 var(--sp-2);">
             </div>
+            <div id="host-key-display-wrapper" class="hidden" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); background: var(--bg-secondary); color: var(--accent-gold); font-size: var(--text-xs); font-weight: bold; text-align: center;">
+              Host Key: <span id="host-key-val"></span>
+            </div>
+            <div id="claim-host-wrapper" style="padding: var(--sp-2) var(--sp-3); border-bottom: 1px solid var(--border-subtle); background: var(--bg-secondary); text-align: center;">
+              <button class="btn btn-ghost" id="btn-claim-host" style="font-size: 10px; padding: 2px 8px; width: 100%;">Claim Host</button>
+            </div>
             <div id="waiting-queue-container" class="waiting-queue-container hidden" style="border-bottom: 1px solid var(--border-subtle); padding: var(--sp-3); background: var(--bg-secondary); flex-shrink: 0;">
               <h4 style="font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-cyan); margin-bottom: var(--sp-2); display: flex; justify-content: space-between; align-items: center; font-weight: 600; margin-top: 0;">
                 <span>Waiting Room Queue</span>
@@ -809,7 +815,7 @@
           <button class="ctrl-btn" id="btn-screen" title="Share Screen">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><polyline points="8 10 12 6 16 10"/></svg>
           </button>
-          <button class="ctrl-btn" id="btn-record" title="Record Meeting">
+          <button class="ctrl-btn host-only hidden" id="btn-record" title="Record Meeting">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4" fill="currentColor"/></svg>
           </button>
           <div class="ctrl-divider"></div>
