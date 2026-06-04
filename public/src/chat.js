@@ -21,6 +21,9 @@ export function bindChat() {
 
   // Build emoji picker
   buildEmojiPicker();
+
+  // Bind @mention autocomplete
+  bindMentionAutocomplete();
 }
 
 function buildEmojiPicker() {
@@ -145,6 +148,17 @@ export function sendChat() {
 
 export function formatMessageText(text) {
   let escapedText = escapeHtml(text);
+  
+  // Highlight @mentions
+  const mentionRegex = /@(\w+)/g;
+  escapedText = escapedText.replace(mentionRegex, (match, username) => {
+    const localUsername = (state.userName || 'You').toLowerCase().replace(/\s+/g, '_');
+    const isMe = localUsername.includes(username.toLowerCase()) || username.toLowerCase().includes(localUsername);
+    if (isMe) {
+      return `<span class="chat-mention-tag me" style="background: var(--accent-cyan-dim); color: var(--text-accent-cyan); font-weight: 700; padding: 1px 4px; border: 2px solid var(--accent-cyan); border-radius: var(--radius-sm);">@${username}</span>`;
+    }
+    return `<span class="chat-mention-tag" style="background: var(--bg-hover); color: var(--text-secondary); font-weight: 500; padding: 1px 4px; border: 1px solid var(--border-subtle); border-radius: var(--radius-sm);">@${username}</span>`;
+  });
   
   // Format code blocks: ```code```
   const codeBlockRegex = /```([\s\S]*?)```/g;
@@ -373,5 +387,152 @@ export function copyChatText(copyId, btn) {
     }, 1500);
   }).catch(err => {
     console.warn('Failed to copy chat text:', err);
+  });
+}
+
+export function bindMentionAutocomplete() {
+  const input = dom.chatInput;
+  if (!input) return;
+
+  const autocomplete = document.createElement('div');
+  autocomplete.id = 'mention-autocomplete';
+  autocomplete.style.cssText = `
+    display: none;
+    position: absolute;
+    bottom: 54px;
+    left: 8px;
+    right: 8px;
+    background: var(--bg-surface);
+    border: 2px solid var(--border-strong);
+    box-shadow: var(--neo-shadow-sm);
+    z-index: 1000;
+    max-height: 120px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  `;
+  
+  const chatInputRow = input.closest('.chat-input-row');
+  if (chatInputRow) {
+    chatInputRow.parentNode.style.position = 'relative';
+    chatInputRow.parentNode.insertBefore(autocomplete, chatInputRow);
+  }
+
+  let selectedIndex = -1;
+  let matches = [];
+
+  function getMentionQuery() {
+    const text = input.value;
+    const caretPos = input.selectionStart;
+    const textBeforeCaret = text.slice(0, caretPos);
+    const lastWord = textBeforeCaret.split(/\s+/).pop();
+    if (lastWord.startsWith('@')) {
+      return {
+        query: lastWord.slice(1),
+        startIdx: caretPos - lastWord.length
+      };
+    }
+    return null;
+  }
+
+  input.addEventListener('input', () => {
+    const mention = getMentionQuery();
+    if (!mention) {
+      autocomplete.style.display = 'none';
+      return;
+    }
+
+    const query = mention.query.toLowerCase();
+    const peersList = Array.from(state.peers.values()).map(p => p.info.displayName);
+    const botsList = state.bots.map(b => b.name);
+    const candidates = [...new Set([...peersList, ...botsList])];
+    
+    matches = candidates.filter(name => name.toLowerCase().includes(query));
+    if (matches.length === 0) {
+      autocomplete.style.display = 'none';
+      return;
+    }
+
+    renderMatches(mention.startIdx);
+  });
+
+  function renderMatches(startIdx) {
+    autocomplete.innerHTML = '';
+    autocomplete.style.display = 'flex';
+    selectedIndex = 0;
+
+    matches.forEach((name, idx) => {
+      const item = document.createElement('div');
+      item.textContent = `@${name}`;
+      item.style.cssText = `
+        padding: var(--sp-2) var(--sp-3);
+        cursor: pointer;
+        font-size: var(--text-xs);
+        font-family: var(--font);
+        color: var(--text-primary);
+        background: ${idx === 0 ? 'var(--bg-hover)' : 'transparent'};
+        border-bottom: 1px solid var(--border-subtle);
+      `;
+      
+      item.addEventListener('mouseenter', () => {
+        selectedIndex = idx;
+        updateSelection();
+      });
+
+      item.addEventListener('click', () => {
+        selectName(name, startIdx);
+      });
+
+      autocomplete.appendChild(item);
+    });
+  }
+
+  function updateSelection() {
+    Array.from(autocomplete.children).forEach((child, idx) => {
+      child.style.background = idx === selectedIndex ? 'var(--bg-hover)' : 'transparent';
+    });
+  }
+
+  function selectName(name, startIdx) {
+    const text = input.value;
+    const caretPos = input.selectionStart;
+    const beforeMention = text.slice(0, startIdx);
+    const afterMention = text.slice(caretPos);
+    
+    const formattedName = name.replace(/\s+/g, '_');
+    
+    input.value = `${beforeMention}@${formattedName} ${afterMention}`;
+    input.focus();
+    const newCaretPos = startIdx + formattedName.length + 2;
+    input.setSelectionRange(newCaretPos, newCaretPos);
+    autocomplete.style.display = 'none';
+  }
+
+  input.addEventListener('keydown', (e) => {
+    if (autocomplete.style.display === 'flex') {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % matches.length;
+        updateSelection();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + matches.length) % matches.length;
+        updateSelection();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (matches[selectedIndex]) {
+          const mention = getMentionQuery();
+          if (mention) selectName(matches[selectedIndex], mention.startIdx);
+        }
+      } else if (e.key === 'Escape') {
+        autocomplete.style.display = 'none';
+      }
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    if (!autocomplete.contains(e.target) && e.target !== input) {
+      autocomplete.style.display = 'none';
+    }
   });
 }

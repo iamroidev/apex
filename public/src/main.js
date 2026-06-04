@@ -189,6 +189,20 @@ export function updateRoleUI() {
   document.querySelectorAll('.host-only').forEach(el => {
     el.classList.toggle('hidden', !hasMod);
   });
+  
+  const hostKeyWrapper = document.getElementById('host-key-display-wrapper');
+  const claimHostWrapper = document.getElementById('claim-host-wrapper');
+  if (hostKeyWrapper) {
+    hostKeyWrapper.classList.toggle('hidden', !state.isHost);
+    if (state.isHost && state.hostKey) {
+      const valEl = document.getElementById('host-key-val');
+      if (valEl) valEl.textContent = state.hostKey;
+    }
+  }
+  if (claimHostWrapper) {
+    claimHostWrapper.classList.toggle('hidden', state.isHost);
+  }
+
   updateWaitingQueueUI();
 }
 
@@ -564,29 +578,18 @@ export function toggleWhiteboard() {
     dom.wbOverlay.classList.remove('hidden');
     dom.btnWhiteboardToggle.classList.add('active');
     resizeWhiteboard();
-    // Force video grid visibility when returning from whiteboard
-    if (dom.videoGrid) dom.videoGrid.style.display = '';
   } else {
     dom.wbOverlay.classList.add('hidden');
     dom.btnWhiteboardToggle.classList.remove('active');
-    // Reset video grid and speaker view when closing whiteboard
-    if (state.layoutMode === 'grid') {
-      dom.videoGrid.classList.remove('hidden');
-      dom.speakerViewContainer.classList.add('hidden');
-    } else {
-      dom.videoGrid.classList.add('hidden');
-      dom.speakerViewContainer.classList.remove('hidden');
-    }
-    // Force re-render of video tiles
-    updateVideoGridCount();
-    if (state.layoutMode === 'speaker') {
-      updateSpeakerViewLayout();
-    }
   }
   syncPresentationVideoStrip();
 }
 
 export function toggleRecording() {
+  if (!hasModPowers()) {
+    alert("Only hosts or co-hosts can record meetings.");
+    return;
+  }
   if (state.isRecording) {
     stopRecordingLocal();
   } else {
@@ -723,6 +726,10 @@ export function bindMeetingControls() {
   dom.btnChatToggle.addEventListener('click', () => togglePanel('chat'));
   dom.btnParticipantsToggle.addEventListener('click', () => togglePanel('participants'));
   dom.btnWhiteboardToggle.addEventListener('click', toggleWhiteboard);
+  const claimHostBtn = document.getElementById('btn-claim-host');
+  if (claimHostBtn) {
+    claimHostBtn.addEventListener('click', claimHostRole);
+  }
 
   dom.panelClose.addEventListener('click', () => {
     state.panelOpen = false;
@@ -1498,6 +1505,13 @@ export function toggleWaitingRoomHost() {
 export function toggleLockMeetingHost() {
   const locked = !state.isRoomLocked;
   state.socket.emit('lock-room', { roomId: state.roomId, locked });
+}
+
+export function claimHostRole() {
+  const key = prompt("Enter Host Key to claim Host role:");
+  if (key) {
+    state.socket.emit('claim-host', { roomId: state.roomId, hostKey: key.trim().toUpperCase() });
+  }
 }
 
 export function cancelWaitingRoom() {

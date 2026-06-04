@@ -164,6 +164,12 @@ export function bindWhiteboard() {
     dom.btnWbSave.addEventListener('click', saveWhiteboardAsPNG);
   }
 
+  dom.wbOverlay.addEventListener('transitionend', (e) => {
+    if (e.target === dom.wbOverlay && !dom.wbOverlay.classList.contains('hidden')) {
+      resizeWhiteboard();
+    }
+  });
+
   window.addEventListener('resize', () => {
     if (!dom.wbOverlay.classList.contains('hidden')) {
       resizeWhiteboard();
@@ -221,8 +227,21 @@ export function resizeWhiteboard() {
   const container = dom.wbCanvas.parentElement;
   if (!container) return;
   const rect = container.getBoundingClientRect();
-  dom.wbCanvas.width = Math.max(rect.width, 400);
-  dom.wbCanvas.height = Math.max(rect.height - 45, 300);
+  const headerHeight = 45;
+  let stripHeight = 0;
+  
+  const strip = document.getElementById('wb-video-strip');
+  if (strip && strip.classList.contains('docked')) {
+    stripHeight = 145;
+  }
+  
+  const newWidth = Math.max(rect.width, 400);
+  const newHeight = Math.max(rect.height - headerHeight - stripHeight, 300);
+  
+  if (dom.wbCanvas.width !== newWidth || dom.wbCanvas.height !== newHeight) {
+    dom.wbCanvas.width = newWidth;
+    dom.wbCanvas.height = newHeight;
+  }
   redrawWhiteboard();
 }
 
