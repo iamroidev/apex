@@ -1,0 +1,9 @@
+WARNING: JWT_SECRET is not set or using default. Generate a secure secret with: node -e "console.log(crypto.randomBytes(32).toString('hex'))"
+
+  ╔══════════════════════════════════════╗
+  ║   Apex Classroom — Running           ║
+  ║   http://localhost:3000              ║
+  ║   LiveKit: Not configured (Sandbox Mode)     ║
+  ╚══════════════════════════════════════╝
+
+{"level":30,"time":1780531334627,"pid":5082,"hostname":"runnervm3jyl0","req":{"id":1,"method":"GET","url":"/api/health","query":{},"params":{},"headers":{"host":"localhost:3000","user-agent":"curl/8.5.0","accept":"*/*"},"remoteAddress":"127.0.0.1","remotePort":37982},"res":{"statusCode":200,"headers":{"x-powered-by":"Express","cross-origin-opener-policy":"same-origin-allow-popups","content-type":"application/json; charset=utf-8","content-length":"119","etag":"W/\"77-cWph+roT9REUIYtJ6gMXlZ6+0xg\""}},"responseTime":5,"msg":"request completed"}
