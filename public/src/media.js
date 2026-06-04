@@ -1693,3 +1693,44 @@ export function initPresentationVideoStrips() {
   setupStripToggle('slides-video-strip', 'btn-slides-strip-dock');
 }
 
+
+import { toggleBlur } from './blur.js';
+
+export async function handleBlurToggle() {
+  if (!state.localStream) return;
+  await toggleBlur(state.localStream, async (newTrack) => {
+    // Replace track in peer connections and LiveKit
+    const oldTrack = state.localStream.getVideoTracks()[0];
+    state.localStream.removeTrack(oldTrack);
+    state.localStream.addTrack(newTrack);
+    
+    // Update local video element
+    const localVideo = document.getElementById('local-video');
+    if (localVideo) localVideo.srcObject = state.localStream;
+    
+    // Replace track in livekit
+    if (state.livekitConnected && state.livekitRoom) {
+      await state.livekitRoom.localParticipant.publishTrack(newTrack, { name: 'camera' });
+    }
+  });
+}
+
+export async function handleBlurToggle() {
+  const { toggleBlur } = await import('./blur.js');
+  if (!state.localStream) return;
+  await toggleBlur(state.localStream, async (newTrack) => {
+    // Replace track in peer connections and LiveKit
+    const oldTrack = state.localStream.getVideoTracks()[0];
+    state.localStream.removeTrack(oldTrack);
+    state.localStream.addTrack(newTrack);
+    
+    // Update local video element
+    const localVideo = document.getElementById('local-video');
+    if (localVideo) localVideo.srcObject = state.localStream;
+    
+    // Replace track in livekit
+    if (state.livekitConnected && state.livekitRoom) {
+      await state.livekitRoom.localParticipant.publishTrack(newTrack, { name: 'camera' });
+    }
+  });
+}
